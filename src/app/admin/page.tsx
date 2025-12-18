@@ -219,7 +219,7 @@ export default function AdminPage() {
 
     if (isSupabaseConfigured && supabase) {
       if (editingProduct) {
-        await supabase
+        await (supabase as any)
           .from('products')
           .update({
             name: productForm.name,
@@ -230,7 +230,7 @@ export default function AdminPage() {
           })
           .eq('id', editingProduct.id)
       } else {
-        await supabase
+        await (supabase as any)
           .from('products')
           .insert({
             name: productForm.name,
@@ -279,7 +279,7 @@ export default function AdminPage() {
       }
 
       if (isSupabaseConfigured && supabase) {
-        await supabase.from('products').delete().eq('id', id)
+        await (supabase as any).from('products').delete().eq('id', id)
         await loadData()
       } else {
         const newProducts = products.filter(p => p.id !== id)
@@ -316,12 +316,12 @@ export default function AdminPage() {
 
     if (isSupabaseConfigured && supabase) {
       if (editingCategory) {
-        await supabase
+        await (supabase as any)
           .from('categories')
           .update({ name: categoryForm.name, slug: generateSlug(categoryForm.name) })
           .eq('id', editingCategory.id)
       } else {
-        await supabase
+        await (supabase as any)
           .from('categories')
           .insert({ name: categoryForm.name, slug: generateSlug(categoryForm.name) })
       }
@@ -356,7 +356,7 @@ export default function AdminPage() {
     }
     if (confirm('Tem certeza que deseja excluir esta família?')) {
       if (isSupabaseConfigured && supabase) {
-        await supabase.from('categories').delete().eq('id', id)
+        await (supabase as any).from('categories').delete().eq('id', id)
         await loadData()
       } else {
         const newCategories = categories.filter(c => c.id !== id)

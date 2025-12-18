@@ -3,26 +3,26 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { login, isAuthenticated } from '@/lib/auth'
-import { Package, Lock, Mail, AlertCircle } from 'lucide-react'
+import { Package, Lock, User, AlertCircle } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
-  const [email, setEmail] = useState('')
+  const [mounted, setMounted] = useState(false)
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [checkingAuth, setCheckingAuth] = useState(true)
 
   useEffect(() => {
-    const checkAuth = async () => {
+    const init = async () => {
       const authenticated = await isAuthenticated()
       if (authenticated) {
         router.push('/admin')
       } else {
-        setCheckingAuth(false)
+        setMounted(true)
       }
     }
-    checkAuth()
+    init()
   }, [router])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -30,17 +30,17 @@ export default function LoginPage() {
     setError('')
     setIsLoading(true)
 
-    const result = await login(email, password)
+    const result = await login(username, password)
 
     if (result.success) {
       router.push('/admin')
     } else {
-      setError(result.error || 'Email ou senha incorretos')
+      setError(result.error || 'Usuário ou senha incorretos')
       setIsLoading(false)
     }
   }
 
-  if (checkingAuth) {
+  if (!mounted) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
@@ -73,17 +73,17 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email
+                Usuário
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <input
-                  type="email"
+                  type="text"
                   required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="seu@email.com"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                  placeholder="admin ou email"
                   disabled={isLoading}
                 />
               </div>
@@ -100,7 +100,7 @@ export default function LoginPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
                   placeholder="Digite sua senha"
                   disabled={isLoading}
                 />
@@ -126,7 +126,7 @@ export default function LoginPage() {
           {/* Info */}
           <div className="mt-6 p-3 bg-blue-50 rounded-lg">
             <p className="text-xs text-blue-700 text-center">
-              Use o email e senha cadastrados no Supabase
+              Modo local: admin / admin123
             </p>
           </div>
         </div>

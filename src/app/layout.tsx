@@ -8,10 +8,13 @@ export const metadata: Metadata = {
   title: 'Catálogo de Produtos',
   description: 'Navegue pelo nosso catálogo de produtos',
   manifest: '/manifest.json',
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'default',
-    title: 'Catálogo',
+  icons: {
+    icon: '/Logo.png',
+    shortcut: '/Logo.png',
+    apple: '/Logo.png',
+  },
+  other: {
+    'mobile-web-app-capable': 'yes',
   },
 }
 

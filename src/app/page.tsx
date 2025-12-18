@@ -69,30 +69,30 @@ export default function CatalogPage() {
 
       if (isSupabaseConfigured && supabase) {
         // Load from Supabase
-        const { data: cats } = await supabase
+        const { data: cats } = await (supabase as any)
           .from('categories')
           .select('*')
           .order('name')
 
         if (cats) {
-          setCategories(cats.map(c => ({
+          setCategories(cats.map((c: any) => ({
             id: c.id,
             name: c.name,
             slug: c.slug
           })))
         }
 
-        const { data: prods } = await supabase
+        const { data: prods } = await (supabase as any)
           .from('products')
           .select('*, categories(slug)')
           .order('created_at', { ascending: false })
 
         if (prods) {
-          setProducts(prods.map(p => ({
+          setProducts(prods.map((p: any) => ({
             id: p.id,
             name: p.name,
             description: p.description,
-            category: (p.categories as any)?.slug || '',
+            category: p.categories?.slug || '',
             image: p.image,
             images: p.images || undefined
           })))

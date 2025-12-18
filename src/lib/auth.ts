@@ -59,7 +59,7 @@ function recordLocalLogin(email: string) {
 async function recordSupabaseLogin(user: User) {
   if (!supabase) return
   try {
-    await supabase.from('login_history').insert({
+    await (supabase as any).from('login_history').insert({
       user_id: user.id,
       user_email: user.email || '',
       user_agent: typeof window !== 'undefined' ? window.navigator.userAgent : null,
@@ -72,7 +72,7 @@ async function recordSupabaseLogin(user: User) {
 async function getUserRole(userId: string): Promise<UserRole> {
   if (!supabase) return 'viewer'
 
-  const { data } = await supabase
+  const { data } = await (supabase as any)
     .from('user_roles')
     .select('role')
     .eq('user_id', userId)
@@ -199,7 +199,7 @@ export async function createUser(email: string, password: string, role: UserRole
 
   // Add role to user_roles table
   if (data.user) {
-    await supabase!.from('user_roles').insert({
+    await (supabase as any).from('user_roles').insert({
       user_id: data.user.id,
       role: role,
     })
@@ -233,7 +233,7 @@ export async function getLoginHistory(limit: number = 50): Promise<LocalLoginHis
     return history.slice(0, limit)
   }
 
-  const { data, error } = await supabase!
+  const { data, error } = await (supabase as any)
     .from('login_history')
     .select('*')
     .order('logged_in_at', { ascending: false })

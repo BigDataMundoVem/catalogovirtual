@@ -110,13 +110,13 @@ export default function AdminPage() {
   const loadData = async () => {
     if (isSupabaseConfigured && supabase) {
       // Load from Supabase
-      const { data: cats } = await supabase
+      const { data: cats } = await (supabase as any)
         .from('categories')
         .select('*')
         .order('name')
       if (cats) setCategories(cats)
 
-      const { data: prods } = await supabase
+      const { data: prods } = await (supabase as any)
         .from('products')
         .select('*')
         .order('created_at', { ascending: false })

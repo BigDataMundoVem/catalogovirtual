@@ -129,26 +129,26 @@ export function ImageGallery({ images, productName, productDescription, isOpen, 
 
           {/* Share menu dropdown */}
           {showShareMenu && (
-            <div className="absolute top-full right-0 mt-2 bg-white rounded-lg shadow-lg overflow-hidden min-w-[160px]">
+            <div className="absolute top-full right-0 mt-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden min-w-[160px]">
               <button
                 onClick={shareWhatsApp}
-                className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-100 transition-colors"
+                className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >
-                <MessageCircle className="h-5 w-5 text-green-600" />
+                <MessageCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
                 <span>WhatsApp</span>
               </button>
               <button
                 onClick={copyLink}
-                className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-100 transition-colors border-t"
+                className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border-t dark:border-gray-700"
               >
                 {linkCopied ? (
                   <>
-                    <Check className="h-5 w-5 text-green-600" />
+                    <Check className="h-5 w-5 text-green-600 dark:text-green-400" />
                     <span>Copiado!</span>
                   </>
                 ) : (
                   <>
-                    <Link2 className="h-5 w-5 text-blue-600" />
+                    <Link2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                     <span>Copiar Link</span>
                   </>
                 )}

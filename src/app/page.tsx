@@ -6,9 +6,10 @@ import { ProductCard } from '@/components/ProductCard'
 import { SearchBar } from '@/components/SearchBar'
 import { ImageGallery } from '@/components/ImageGallery'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
-import { Package, Menu, X, FolderOpen, Heart, ChevronLeft, ChevronRight, LogOut, Settings } from 'lucide-react'
+import { Package, Menu, X, FolderOpen, Heart, ChevronLeft, ChevronRight, LogOut, Settings, Sun, Moon } from 'lucide-react'
 import { getFavorites } from '@/lib/favorites'
 import { isAuthenticated, isAdmin, logout } from '@/lib/auth'
+import { useTheme } from '@/lib/ThemeContext'
 import Image from 'next/image'
 
 // Local storage keys
@@ -32,6 +33,7 @@ interface Category {
 
 export default function CatalogPage() {
   const router = useRouter()
+  const { theme, toggleTheme } = useTheme()
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [search, setSearch] = useState('')
@@ -186,36 +188,44 @@ export default function CatalogPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-20">
+      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-20 transition-colors">
         <div className="px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               {/* Mobile menu button */}
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="lg:hidden p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg"
+                className="lg:hidden p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
               >
                 <Menu className="h-6 w-6" />
               </button>
               <div className="flex items-center gap-2">
                 <Image src="/Logo.png" alt="Logo" width={40} height={40} className="object-contain" />
-                <h1 className="text-2xl font-bold text-gray-900">Catálogo</h1>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Catálogo</h1>
               </div>
             </div>
             <div className="flex items-center gap-4">
+              {/* Theme toggle */}
+              <button
+                onClick={toggleTheme}
+                className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                title={theme === 'dark' ? 'Modo claro' : 'Modo escuro'}
+              >
+                {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              </button>
               {userIsAdmin && (
                 <a
                   href="/admin"
-                  className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                  className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
                 >
                   <Settings className="h-4 w-4" />
                   Admin
@@ -226,7 +236,7 @@ export default function CatalogPage() {
                   await logout()
                   router.push('/login')
                 }}
-                className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
               >
                 <LogOut className="h-4 w-4" />
                 Sair
@@ -250,18 +260,18 @@ export default function CatalogPage() {
           className={`
             fixed lg:sticky top-0 lg:top-[73px] left-0 z-40 lg:z-10
             w-72 h-screen lg:h-[calc(100vh-73px)]
-            bg-white border-r border-gray-200
+            bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700
             transform transition-transform duration-300 ease-in-out
             ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
             overflow-y-auto
           `}
         >
           {/* Mobile close button */}
-          <div className="lg:hidden flex items-center justify-between p-4 border-b border-gray-200">
-            <span className="font-semibold text-gray-900">Famílias</span>
+          <div className="lg:hidden flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+            <span className="font-semibold text-gray-900 dark:text-white">Famílias</span>
             <button
               onClick={() => setSidebarOpen(false)}
-              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg"
+              className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
             >
               <X className="h-5 w-5" />
             </button>
@@ -269,7 +279,7 @@ export default function CatalogPage() {
 
           {/* Categories list */}
           <nav className="p-4">
-            <h2 className="hidden lg:block text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
+            <h2 className="hidden lg:block text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">
               Famílias
             </h2>
 
@@ -282,8 +292,8 @@ export default function CatalogPage() {
                     w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left
                     transition-colors
                     ${selectedCategory === '' && !showFavorites
-                      ? 'bg-blue-50 text-blue-700 font-medium'
-                      : 'text-gray-700 hover:bg-gray-100'
+                      ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-medium'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }
                   `}
                 >
@@ -291,7 +301,7 @@ export default function CatalogPage() {
                     <Package className="h-5 w-5" />
                     <span>Todos os Produtos</span>
                   </div>
-                  <span className={`text-sm ${selectedCategory === '' && !showFavorites ? 'text-blue-600' : 'text-gray-400'}`}>
+                  <span className={`text-sm ${selectedCategory === '' && !showFavorites ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`}>
                     {products.length}
                   </span>
                 </button>
@@ -305,8 +315,8 @@ export default function CatalogPage() {
                     w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left
                     transition-colors
                     ${showFavorites
-                      ? 'bg-red-50 text-red-700 font-medium'
-                      : 'text-gray-700 hover:bg-gray-100'
+                      ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 font-medium'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }
                   `}
                 >
@@ -314,7 +324,7 @@ export default function CatalogPage() {
                     <Heart className={`h-5 w-5 ${showFavorites ? 'fill-current' : ''}`} />
                     <span>Favoritos</span>
                   </div>
-                  <span className={`text-sm ${showFavorites ? 'text-red-600' : 'text-gray-400'}`}>
+                  <span className={`text-sm ${showFavorites ? 'text-red-600 dark:text-red-400' : 'text-gray-400 dark:text-gray-500'}`}>
                     {favorites.length}
                   </span>
                 </button>
@@ -323,7 +333,7 @@ export default function CatalogPage() {
               {/* Separator */}
               {categories.length > 0 && (
                 <li className="py-2">
-                  <div className="border-t border-gray-200" />
+                  <div className="border-t border-gray-200 dark:border-gray-700" />
                 </li>
               )}
 
@@ -336,8 +346,8 @@ export default function CatalogPage() {
                       w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left
                       transition-colors
                       ${selectedCategory === category.slug && !showFavorites
-                        ? 'bg-blue-50 text-blue-700 font-medium'
-                        : 'text-gray-700 hover:bg-gray-100'
+                        ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-medium'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                       }
                     `}
                   >
@@ -345,7 +355,7 @@ export default function CatalogPage() {
                       <FolderOpen className="h-5 w-5" />
                       <span>{category.name}</span>
                     </div>
-                    <span className={`text-sm ${selectedCategory === category.slug ? 'text-blue-600' : 'text-gray-400'}`}>
+                    <span className={`text-sm ${selectedCategory === category.slug ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`}>
                       {getProductCount(category.slug)}
                     </span>
                   </button>
@@ -365,7 +375,7 @@ export default function CatalogPage() {
           {/* Results header */}
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                 {showFavorites
                   ? 'Favoritos'
                   : selectedCategory
@@ -373,7 +383,7 @@ export default function CatalogPage() {
                     : 'Todos os Produtos'
                 }
               </h2>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 {filteredProducts.length} produto{filteredProducts.length !== 1 ? 's' : ''} encontrado{filteredProducts.length !== 1 ? 's' : ''}
               </p>
             </div>
@@ -399,7 +409,7 @@ export default function CatalogPage() {
                   <button
                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
-                    className="p-2 rounded-lg border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                    className="p-2 rounded-lg border border-gray-200 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
                   >
                     <ChevronLeft className="h-5 w-5" />
                   </button>
@@ -423,7 +433,7 @@ export default function CatalogPage() {
                           className={`w-10 h-10 rounded-lg text-sm font-medium transition-colors ${
                             currentPage === pageNum
                               ? 'bg-blue-600 text-white'
-                              : 'border border-gray-200 hover:bg-gray-100'
+                              : 'border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300'
                           }`}
                         >
                           {pageNum}
@@ -435,7 +445,7 @@ export default function CatalogPage() {
                   <button
                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages}
-                    className="p-2 rounded-lg border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                    className="p-2 rounded-lg border border-gray-200 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
                   >
                     <ChevronRight className="h-5 w-5" />
                   </button>
@@ -444,11 +454,11 @@ export default function CatalogPage() {
             </>
           ) : (
             <div className="text-center py-16">
-              <Package className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <Package className="h-16 w-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
                 Nenhum produto encontrado
               </h3>
-              <p className="text-gray-500 mb-4">
+              <p className="text-gray-500 dark:text-gray-400 mb-4">
                 {products.length === 0
                   ? 'Adicione produtos no painel admin.'
                   : 'Tente ajustar os filtros ou fazer uma nova busca.'}
@@ -456,7 +466,7 @@ export default function CatalogPage() {
               {(search || selectedCategory) && (
                 <button
                   onClick={() => { setSearch(''); setSelectedCategory(''); }}
-                  className="text-blue-600 hover:text-blue-700 font-medium"
+                  className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
                 >
                   Limpar todos os filtros
                 </button>
@@ -467,9 +477,9 @@ export default function CatalogPage() {
       </div>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 mt-8">
+      <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-8 transition-colors">
         <div className="px-4 sm:px-6 lg:px-8 py-8">
-          <p className="text-center text-gray-500 text-sm">
+          <p className="text-center text-gray-500 dark:text-gray-400 text-sm">
             &copy; {new Date().getFullYear()} Catálogo de Produtos. Todos os direitos reservados.
           </p>
         </div>

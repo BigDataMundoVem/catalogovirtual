@@ -6,8 +6,9 @@ import { supabase, isSupabaseConfigured, uploadImage, deleteImage } from '@/lib/
 import { isAuthenticated, isAdmin, logout, getCurrentUser, updatePassword, createUser, getLoginHistory, isLocalMode } from '@/lib/auth'
 import {
   Plus, Pencil, Trash2, X, Package, ArrowLeft, Save,
-  FolderOpen, Tag, LogOut, Settings, Upload, Users, History, AlertCircle
+  FolderOpen, Tag, LogOut, Settings, Upload, Users, History, AlertCircle, Sun, Moon
 } from 'lucide-react'
+import { useTheme } from '@/lib/ThemeContext'
 import Image from 'next/image'
 import Link from 'next/link'
 
@@ -41,6 +42,7 @@ interface LoginHistoryEntry {
 
 export default function AdminPage() {
   const router = useRouter()
+  const { theme, toggleTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
@@ -422,30 +424,37 @@ export default function AdminPage() {
 
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
+      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link href="/" className="flex items-center gap-2 text-gray-500 hover:text-gray-700">
+              <Link href="/" className="flex items-center gap-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
                 <ArrowLeft className="h-5 w-5" /><span>Voltar</span>
               </Link>
-              <div className="h-6 w-px bg-gray-200" />
+              <div className="h-6 w-px bg-gray-200 dark:bg-gray-700" />
               <div className="flex items-center gap-2">
                 <Image src="/Logo.png" alt="Logo" width={32} height={32} className="object-contain" />
-                <h1 className="text-xl font-bold text-gray-900">Admin</h1>
+                <h1 className="text-xl font-bold text-gray-900 dark:text-white">Admin</h1>
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-500 hidden sm:block">{userEmail}</span>
-              <button onClick={handleLogout} className="flex items-center gap-2 px-3 py-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg">
+              <button
+                onClick={toggleTheme}
+                className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                title={theme === 'dark' ? 'Modo claro' : 'Modo escuro'}
+              >
+                {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              </button>
+              <span className="text-sm text-gray-500 dark:text-gray-400 hidden sm:block">{userEmail}</span>
+              <button onClick={handleLogout} className="flex items-center gap-2 px-3 py-2 text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg">
                 <LogOut className="h-5 w-5" /><span className="hidden sm:inline">Sair</span>
               </button>
             </div>
@@ -454,8 +463,8 @@ export default function AdminPage() {
       </header>
 
       {usingLocalMode && (
-        <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-2">
-          <div className="max-w-7xl mx-auto flex items-center gap-2 text-yellow-800 text-sm">
+        <div className="bg-yellow-50 dark:bg-yellow-900/30 border-b border-yellow-200 dark:border-yellow-800 px-4 py-2">
+          <div className="max-w-7xl mx-auto flex items-center gap-2 text-yellow-800 dark:text-yellow-200 text-sm">
             <AlertCircle className="h-4 w-4" />
             <span>Modo local ativo. Configure o Supabase para dados persistentes e múltiplos usuários.</span>
           </div>
@@ -464,44 +473,44 @@ export default function AdminPage() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex gap-2 mb-6 flex-wrap">
-          <button onClick={() => setActiveTab('products')} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${activeTab === 'products' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'}`}>
+          <button onClick={() => setActiveTab('products')} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${activeTab === 'products' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
             <Package className="h-5 w-5" /><span>Produtos ({products.length})</span>
           </button>
-          <button onClick={() => setActiveTab('categories')} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${activeTab === 'categories' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'}`}>
+          <button onClick={() => setActiveTab('categories')} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${activeTab === 'categories' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
             <FolderOpen className="h-5 w-5" /><span>Famílias ({categories.length})</span>
           </button>
           {!usingLocalMode && (
-            <button onClick={() => setActiveTab('users')} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${activeTab === 'users' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'}`}>
+            <button onClick={() => setActiveTab('users')} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${activeTab === 'users' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
               <Users className="h-5 w-5" /><span>Usuários</span>
             </button>
           )}
-          <button onClick={() => { setActiveTab('history'); loadLoginHistory() }} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${activeTab === 'history' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'}`}>
+          <button onClick={() => { setActiveTab('history'); loadLoginHistory() }} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${activeTab === 'history' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
             <History className="h-5 w-5" /><span>Histórico</span>
           </button>
-          <button onClick={() => setActiveTab('settings')} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${activeTab === 'settings' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'}`}>
+          <button onClick={() => setActiveTab('settings')} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${activeTab === 'settings' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
             <Settings className="h-5 w-5" /><span>Configurações</span>
           </button>
         </div>
 
         {/* Products Tab */}
         {activeTab === 'products' && (
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900">Produtos</h2>
-              <button onClick={openNewProductModal} disabled={categories.length === 0} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed">
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden transition-colors">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Produtos</h2>
+              <button onClick={openNewProductModal} disabled={categories.length === 0} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed">
                 <Plus className="h-5 w-5" /><span>Novo Produto</span>
               </button>
             </div>
             {categories.length === 0 && (
-              <div className="px-6 py-4 bg-yellow-50 border-b border-yellow-100">
-                <p className="text-yellow-800 text-sm">Crie pelo menos uma família antes de adicionar produtos.</p>
+              <div className="px-6 py-4 bg-yellow-50 dark:bg-yellow-900/30 border-b border-yellow-100 dark:border-yellow-800">
+                <p className="text-yellow-800 dark:text-yellow-200 text-sm">Crie pelo menos uma família antes de adicionar produtos.</p>
               </div>
             )}
             {products.length > 0 ? (
-              <div className="divide-y divide-gray-200">
+              <div className="divide-y divide-gray-200 dark:divide-gray-700">
                 {products.map((product) => (
-                  <div key={product.id} className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50">
-                    <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                  <div key={product.id} className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                    <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 flex-shrink-0">
                       <Image src={product.image} alt={product.name} fill className="object-cover" />
                       {getProductImageCount(product) > 1 && (
                         <div className="absolute bottom-0 right-0 px-1.5 py-0.5 bg-black/70 text-white text-xs rounded-tl">
@@ -510,22 +519,22 @@ export default function AdminPage() {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-gray-900 truncate">{product.name}</h3>
-                      <p className="text-sm text-gray-500 truncate">{product.description}</p>
-                      <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full mt-1 inline-block">{getCategoryName(product.category_id)}</span>
+                      <h3 className="font-medium text-gray-900 dark:text-white truncate">{product.name}</h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{product.description}</p>
+                      <span className="text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-full mt-1 inline-block">{getCategoryName(product.category_id)}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button onClick={() => openEditProductModal(product)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"><Pencil className="h-5 w-5" /></button>
-                      <button onClick={() => handleDeleteProduct(product.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><Trash2 className="h-5 w-5" /></button>
+                      <button onClick={() => openEditProductModal(product)} className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg"><Pencil className="h-5 w-5" /></button>
+                      <button onClick={() => handleDeleteProduct(product.id)} className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg"><Trash2 className="h-5 w-5" /></button>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
               <div className="px-6 py-16 text-center">
-                <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum produto</h3>
-                <p className="text-gray-500">{categories.length === 0 ? 'Crie uma família primeiro.' : 'Adicione seu primeiro produto.'}</p>
+                <Package className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Nenhum produto</h3>
+                <p className="text-gray-500 dark:text-gray-400">{categories.length === 0 ? 'Crie uma família primeiro.' : 'Adicione seu primeiro produto.'}</p>
               </div>
             )}
           </div>
@@ -533,24 +542,24 @@ export default function AdminPage() {
 
         {/* Categories Tab */}
         {activeTab === 'categories' && (
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900">Famílias</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden transition-colors">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Famílias</h2>
               <button onClick={openNewCategoryModal} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                 <Plus className="h-5 w-5" /><span>Nova Família</span>
               </button>
             </div>
             {categories.length > 0 ? (
-              <div className="divide-y divide-gray-200">
+              <div className="divide-y divide-gray-200 dark:divide-gray-700">
                 {categories.map((category) => {
                   const productCount = products.filter(p => p.category_id === category.id).length
                   return (
-                    <div key={category.id} className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50">
-                      <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center"><Tag className="h-5 w-5 text-blue-600" /></div>
-                      <div className="flex-1"><h3 className="font-medium text-gray-900">{category.name}</h3><p className="text-sm text-gray-500">{productCount} produto{productCount !== 1 ? 's' : ''}</p></div>
+                    <div key={category.id} className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                      <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center"><Tag className="h-5 w-5 text-blue-600 dark:text-blue-400" /></div>
+                      <div className="flex-1"><h3 className="font-medium text-gray-900 dark:text-white">{category.name}</h3><p className="text-sm text-gray-500 dark:text-gray-400">{productCount} produto{productCount !== 1 ? 's' : ''}</p></div>
                       <div className="flex items-center gap-2">
-                        <button onClick={() => openEditCategoryModal(category)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"><Pencil className="h-5 w-5" /></button>
-                        <button onClick={() => handleDeleteCategory(category.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><Trash2 className="h-5 w-5" /></button>
+                        <button onClick={() => openEditCategoryModal(category)} className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg"><Pencil className="h-5 w-5" /></button>
+                        <button onClick={() => handleDeleteCategory(category.id)} className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg"><Trash2 className="h-5 w-5" /></button>
                       </div>
                     </div>
                   )
@@ -558,9 +567,9 @@ export default function AdminPage() {
               </div>
             ) : (
               <div className="px-6 py-16 text-center">
-                <FolderOpen className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma família</h3>
-                <p className="text-gray-500 mb-4">Crie famílias para organizar produtos.</p>
+                <FolderOpen className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Nenhuma família</h3>
+                <p className="text-gray-500 dark:text-gray-400 mb-4">Crie famílias para organizar produtos.</p>
                 <button onClick={openNewCategoryModal} className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"><Plus className="h-5 w-5" /><span>Criar Família</span></button>
               </div>
             )}
@@ -569,26 +578,26 @@ export default function AdminPage() {
 
         {/* Users Tab */}
         {activeTab === 'users' && !usingLocalMode && (
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Criar Novo Usuário</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden transition-colors">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Criar Novo Usuário</h2>
             </div>
             <form onSubmit={handleCreateUser} className="p-6 space-y-4 max-w-md">
-              {userMessage.text && <div className={`p-3 rounded-lg text-sm ${userMessage.type === 'error' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>{userMessage.text}</div>}
+              {userMessage.text && <div className={`p-3 rounded-lg text-sm ${userMessage.type === 'error' ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400' : 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400'}`}>{userMessage.text}</div>}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input type="email" required value={newUserForm.email} onChange={(e) => setNewUserForm({ ...newUserForm, email: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="novo@usuario.com" />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+                <input type="email" required value={newUserForm.email} onChange={(e) => setNewUserForm({ ...newUserForm, email: e.target.value })} className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="novo@usuario.com" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Senha</label>
-                <input type="password" required value={newUserForm.password} onChange={(e) => setNewUserForm({ ...newUserForm, password: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Mínimo 6 caracteres" />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Senha</label>
+                <input type="password" required value={newUserForm.password} onChange={(e) => setNewUserForm({ ...newUserForm, password: e.target.value })} className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="Mínimo 6 caracteres" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Confirmar Senha</label>
-                <input type="password" required value={newUserForm.confirmPassword} onChange={(e) => setNewUserForm({ ...newUserForm, confirmPassword: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Confirmar Senha</label>
+                <input type="password" required value={newUserForm.confirmPassword} onChange={(e) => setNewUserForm({ ...newUserForm, confirmPassword: e.target.value })} className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Usuário</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de Usuário</label>
                 <div className="flex gap-4">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -599,8 +608,8 @@ export default function AdminPage() {
                       onChange={(e) => setNewUserForm({ ...newUserForm, role: e.target.value as 'admin' | 'viewer' })}
                       className="w-4 h-4 text-blue-600 focus:ring-blue-500"
                     />
-                    <span className="text-sm text-gray-700">Visualizador</span>
-                    <span className="text-xs text-gray-400">(apenas visualiza o catálogo)</span>
+                    <span className="text-sm text-gray-700 dark:text-gray-300">Visualizador</span>
+                    <span className="text-xs text-gray-400 dark:text-gray-500">(apenas visualiza o catálogo)</span>
                   </label>
                 </div>
                 <div className="flex gap-4 mt-2">
@@ -613,8 +622,8 @@ export default function AdminPage() {
                       onChange={(e) => setNewUserForm({ ...newUserForm, role: e.target.value as 'admin' | 'viewer' })}
                       className="w-4 h-4 text-blue-600 focus:ring-blue-500"
                     />
-                    <span className="text-sm text-gray-700">Administrador</span>
-                    <span className="text-xs text-gray-400">(acesso total ao painel admin)</span>
+                    <span className="text-sm text-gray-700 dark:text-gray-300">Administrador</span>
+                    <span className="text-xs text-gray-400 dark:text-gray-500">(acesso total ao painel admin)</span>
                   </label>
                 </div>
               </div>
@@ -625,28 +634,28 @@ export default function AdminPage() {
 
         {/* History Tab */}
         {activeTab === 'history' && (
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Histórico de Logins</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden transition-colors">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Histórico de Logins</h2>
             </div>
             {loginHistory.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gray-50">
+                  <thead className="bg-gray-50 dark:bg-gray-700/50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Usuário</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Data/Hora</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Navegador</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Usuário</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Data/Hora</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Navegador</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                     {loginHistory.map((entry) => (
-                      <tr key={entry.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 text-sm text-gray-900">{entry.user_email}</td>
-                        <td className="px-6 py-4 text-sm text-gray-500">
+                      <tr key={entry.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                        <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">{entry.user_email}</td>
+                        <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                           {new Date(entry.logged_in_at).toLocaleString('pt-BR')}
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
+                        <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate">
                           {entry.user_agent?.split(' ')[0] || '-'}
                         </td>
                       </tr>
@@ -656,9 +665,9 @@ export default function AdminPage() {
               </div>
             ) : (
               <div className="px-6 py-16 text-center">
-                <History className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum registro</h3>
-                <p className="text-gray-500">O histórico de logins aparecerá aqui.</p>
+                <History className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Nenhum registro</h3>
+                <p className="text-gray-500 dark:text-gray-400">O histórico de logins aparecerá aqui.</p>
               </div>
             )}
           </div>
@@ -666,17 +675,17 @@ export default function AdminPage() {
 
         {/* Settings Tab */}
         {activeTab === 'settings' && (
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200"><h2 className="text-lg font-semibold text-gray-900">Alterar Senha</h2></div>
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden transition-colors">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700"><h2 className="text-lg font-semibold text-gray-900 dark:text-white">Alterar Senha</h2></div>
             <form onSubmit={handleSaveSettings} className="p-6 space-y-4 max-w-md">
-              {settingsMessage.text && <div className={`p-3 rounded-lg text-sm ${settingsMessage.type === 'error' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>{settingsMessage.text}</div>}
+              {settingsMessage.text && <div className={`p-3 rounded-lg text-sm ${settingsMessage.type === 'error' ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400' : 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400'}`}>{settingsMessage.text}</div>}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nova Senha</label>
-                <input type="password" required value={settingsForm.newPassword} onChange={(e) => setSettingsForm({ ...settingsForm, newPassword: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Mínimo 6 caracteres" />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nova Senha</label>
+                <input type="password" required value={settingsForm.newPassword} onChange={(e) => setSettingsForm({ ...settingsForm, newPassword: e.target.value })} className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="Mínimo 6 caracteres" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Confirmar Nova Senha</label>
-                <input type="password" required value={settingsForm.confirmPassword} onChange={(e) => setSettingsForm({ ...settingsForm, confirmPassword: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Confirmar Nova Senha</label>
+                <input type="password" required value={settingsForm.confirmPassword} onChange={(e) => setSettingsForm({ ...settingsForm, confirmPassword: e.target.value })} className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
               </div>
               <button type="submit" className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"><Save className="h-4 w-4" /><span>Salvar</span></button>
             </form>
@@ -689,42 +698,42 @@ export default function AdminPage() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4">
             <div className="fixed inset-0 bg-black/50" onClick={closeProductModal} />
-            <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+            <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-gray-900">{editingProduct ? 'Editar Produto' : 'Novo Produto'}</h2>
-                <button onClick={closeProductModal} className="p-2 text-gray-400 hover:text-gray-600 rounded-lg"><X className="h-5 w-5" /></button>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{editingProduct ? 'Editar Produto' : 'Novo Produto'}</h2>
+                <button onClick={closeProductModal} className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg"><X className="h-5 w-5" /></button>
               </div>
 
               <form onSubmit={handleProductSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
-                  <input type="text" required value={productForm.name} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nome *</label>
+                  <input type="text" required value={productForm.name} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Descrição *</label>
-                  <textarea required rows={3} value={productForm.description} onChange={(e) => setProductForm({ ...productForm, description: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descrição *</label>
+                  <textarea required rows={3} value={productForm.description} onChange={(e) => setProductForm({ ...productForm, description: e.target.value })} className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Família *</label>
-                  <select required value={productForm.category_id} onChange={(e) => setProductForm({ ...productForm, category_id: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Família *</label>
+                  <select required value={productForm.category_id} onChange={(e) => setProductForm({ ...productForm, category_id: e.target.value })} className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
                     <option value="">Selecione</option>
                     {categories.map((cat) => (<option key={cat.id} value={cat.id}>{cat.name}</option>))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Imagens ({productImages.length})
-                    <span className="text-gray-400 font-normal ml-1">- A primeira é a principal</span>
+                    <span className="text-gray-400 dark:text-gray-500 font-normal ml-1">- A primeira é a principal</span>
                   </label>
 
                   {productImages.length > 0 && (
                     <div className="grid grid-cols-4 gap-2 mb-3">
                       {productImages.map((img, index) => (
                         <div key={index} className="relative group">
-                          <div className={`relative aspect-square rounded-lg overflow-hidden bg-gray-100 ${index === 0 ? 'ring-2 ring-blue-500' : ''}`}>
+                          <div className={`relative aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 ${index === 0 ? 'ring-2 ring-blue-500' : ''}`}>
                             <Image src={img} alt={`Imagem ${index + 1}`} fill className="object-cover" />
                           </div>
                           {index === 0 && (
@@ -743,19 +752,19 @@ export default function AdminPage() {
                     </div>
                   )}
 
-                  <label className={`flex items-center justify-center gap-2 px-4 py-4 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors ${uploadingImages ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                  <label className={`flex items-center justify-center gap-2 px-4 py-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors ${uploadingImages ? 'opacity-50 cursor-not-allowed' : ''}`}>
                     {uploadingImages ? (
                       <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
                     ) : (
                       <Upload className="h-5 w-5 text-gray-400" />
                     )}
-                    <span className="text-sm text-gray-600">{uploadingImages ? 'Enviando...' : 'Clique para enviar imagens'}</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">{uploadingImages ? 'Enviando...' : 'Clique para enviar imagens'}</span>
                     <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleImageUpload} className="hidden" disabled={uploadingImages} />
                   </label>
                 </div>
 
                 <div className="flex gap-3 pt-4">
-                  <button type="button" onClick={closeProductModal} className="flex-1 px-4 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50">Cancelar</button>
+                  <button type="button" onClick={closeProductModal} className="flex-1 px-4 py-2 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">Cancelar</button>
                   <button type="submit" className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"><Save className="h-4 w-4" /><span>Salvar</span></button>
                 </div>
               </form>
@@ -769,15 +778,15 @@ export default function AdminPage() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4">
             <div className="fixed inset-0 bg-black/50" onClick={closeCategoryModal} />
-            <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+            <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-gray-900">{editingCategory ? 'Editar Família' : 'Nova Família'}</h2>
-                <button onClick={closeCategoryModal} className="p-2 text-gray-400 hover:text-gray-600 rounded-lg"><X className="h-5 w-5" /></button>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{editingCategory ? 'Editar Família' : 'Nova Família'}</h2>
+                <button onClick={closeCategoryModal} className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg"><X className="h-5 w-5" /></button>
               </div>
               <form onSubmit={handleCategorySubmit} className="space-y-4">
-                <div><label className="block text-sm font-medium text-gray-700 mb-1">Nome *</label><input type="text" required value={categoryForm.name} onChange={(e) => setCategoryForm({ name: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ex: Eletrônicos" /></div>
+                <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nome *</label><input type="text" required value={categoryForm.name} onChange={(e) => setCategoryForm({ name: e.target.value })} className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="Ex: Eletrônicos" /></div>
                 <div className="flex gap-3 pt-4">
-                  <button type="button" onClick={closeCategoryModal} className="flex-1 px-4 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50">Cancelar</button>
+                  <button type="button" onClick={closeCategoryModal} className="flex-1 px-4 py-2 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">Cancelar</button>
                   <button type="submit" className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"><Save className="h-4 w-4" /><span>Salvar</span></button>
                 </div>
               </form>

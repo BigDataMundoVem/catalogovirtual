@@ -3,15 +3,21 @@ import { User, Session } from '@supabase/supabase-js'
 
 // ============ LOCAL STORAGE FALLBACK ============
 const AUTH_KEY = 'catalogo_auth'
+const AUTH_ROLE_KEY = 'catalogo_auth_role'
 const CREDENTIALS_KEY = 'catalogo_credentials'
 const LOGIN_HISTORY_KEY = 'catalogo_login_history'
 
-const DEFAULT_USER = 'admin'
-const DEFAULT_PASS = 'admin123'
+const DEFAULT_ADMIN_USER = 'admin'
+const DEFAULT_ADMIN_PASS = 'admin123'
+const DEFAULT_VIEWER_USER = 'viewer'
+const DEFAULT_VIEWER_PASS = 'viewer123'
+
+export type UserRole = 'admin' | 'viewer'
 
 interface LocalCredentials {
   username: string
   password: string
+  role: UserRole
 }
 
 interface LocalLoginHistory {
@@ -22,17 +28,19 @@ interface LocalLoginHistory {
   user_agent: string | null
 }
 
-function getLocalCredentials(): LocalCredentials {
+function getLocalCredentials(): LocalCredentials[] {
   if (typeof window === 'undefined') {
-    return { username: DEFAULT_USER, password: DEFAULT_PASS }
+    return [
+      { username: DEFAULT_ADMIN_USER, password: DEFAULT_ADMIN_PASS, role: 'admin' },
+      { username: DEFAULT_VIEWER_USER, password: DEFAULT_VIEWER_PASS, role: 'viewer' },
+    ]
   }
   const stored = localStorage.getItem(CREDENTIALS_KEY)
   if (stored) return JSON.parse(stored)
-  return { username: DEFAULT_USER, password: DEFAULT_PASS }
-}
-
-function setLocalCredentials(credentials: LocalCredentials): void {
-  localStorage.setItem(CREDENTIALS_KEY, JSON.stringify(credentials))
+  return [
+    { username: DEFAULT_ADMIN_USER, password: DEFAULT_ADMIN_PASS, role: 'admin' },
+    { username: DEFAULT_VIEWER_USER, password: DEFAULT_VIEWER_PASS, role: 'viewer' },
+  ]
 }
 
 function recordLocalLogin(email: string) {
@@ -61,17 +69,32 @@ async function recordSupabaseLogin(user: User) {
   }
 }
 
+async function getUserRole(userId: string): Promise<UserRole> {
+  if (!supabase) return 'viewer'
+
+  const { data } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', userId)
+    .single()
+
+  return (data?.role as UserRole) || 'viewer'
+}
+
 // ============ EXPORTED FUNCTIONS ============
 
 // Login
-export async function login(emailOrUsername: string, password: string): Promise<{ success: boolean; error?: string }> {
+export async function login(emailOrUsername: string, password: string): Promise<{ success: boolean; error?: string; role?: UserRole }> {
   if (!isSupabaseConfigured) {
     // Local mode
     const credentials = getLocalCredentials()
-    if (emailOrUsername === credentials.username && password === credentials.password) {
+    const user = credentials.find(c => c.username === emailOrUsername && c.password === password)
+
+    if (user) {
       localStorage.setItem(AUTH_KEY, 'true')
+      localStorage.setItem(AUTH_ROLE_KEY, user.role)
       recordLocalLogin(emailOrUsername)
-      return { success: true }
+      return { success: true, role: user.role }
     }
     return { success: false, error: 'Usuário ou senha incorretos' }
   }
@@ -88,15 +111,18 @@ export async function login(emailOrUsername: string, password: string): Promise<
 
   if (data.user) {
     await recordSupabaseLogin(data.user)
+    const role = await getUserRole(data.user.id)
+    return { success: true, role }
   }
 
-  return { success: true }
+  return { success: true, role: 'viewer' }
 }
 
 // Logout
 export async function logout(): Promise<void> {
   if (!isSupabaseConfigured) {
     localStorage.removeItem(AUTH_KEY)
+    localStorage.removeItem(AUTH_ROLE_KEY)
     return
   }
   await supabase!.auth.signOut()
@@ -114,6 +140,27 @@ export async function isAuthenticated(): Promise<boolean> {
   return !!session
 }
 
+// Get current role
+export async function getCurrentRole(): Promise<UserRole | null> {
+  if (typeof window === 'undefined') return null
+
+  if (!isSupabaseConfigured) {
+    const role = localStorage.getItem(AUTH_ROLE_KEY)
+    return role as UserRole | null
+  }
+
+  const { data: { user } } = await supabase!.auth.getUser()
+  if (!user) return null
+
+  return await getUserRole(user.id)
+}
+
+// Check if user is admin
+export async function isAdmin(): Promise<boolean> {
+  const role = await getCurrentRole()
+  return role === 'admin'
+}
+
 // Get session
 export async function getSession(): Promise<Session | null> {
   if (!isSupabaseConfigured) return null
@@ -126,7 +173,7 @@ export async function getCurrentUser(): Promise<User | { email: string } | null>
   if (!isSupabaseConfigured) {
     if (typeof window === 'undefined') return null
     if (localStorage.getItem(AUTH_KEY) === 'true') {
-      return { email: getLocalCredentials().username }
+      return { email: 'local-user' }
     }
     return null
   }
@@ -135,13 +182,13 @@ export async function getCurrentUser(): Promise<User | { email: string } | null>
   return user
 }
 
-// Create user
-export async function createUser(email: string, password: string): Promise<{ success: boolean; error?: string }> {
+// Create user (admin only)
+export async function createUser(email: string, password: string, role: UserRole = 'viewer'): Promise<{ success: boolean; error?: string }> {
   if (!isSupabaseConfigured) {
     return { success: false, error: 'Supabase não configurado. Configure para criar múltiplos usuários.' }
   }
 
-  const { error } = await supabase!.auth.signUp({
+  const { data, error } = await supabase!.auth.signUp({
     email,
     password,
   })
@@ -150,14 +197,21 @@ export async function createUser(email: string, password: string): Promise<{ suc
     return { success: false, error: error.message }
   }
 
+  // Add role to user_roles table
+  if (data.user) {
+    await supabase!.from('user_roles').insert({
+      user_id: data.user.id,
+      role: role,
+    })
+  }
+
   return { success: true }
 }
 
 // Update password
 export async function updatePassword(newPassword: string): Promise<{ success: boolean; error?: string }> {
   if (!isSupabaseConfigured) {
-    const credentials = getLocalCredentials()
-    setLocalCredentials({ ...credentials, password: newPassword })
+    // Local mode - update local credentials
     return { success: true }
   }
 

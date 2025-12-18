@@ -2,18 +2,21 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
-import { X, ChevronLeft, ChevronRight, Download } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, Download, Share2, MessageCircle, Link2, Check } from 'lucide-react'
 
 interface ImageGalleryProps {
   images: string[]
   productName: string
+  productDescription?: string
   isOpen: boolean
   onClose: () => void
   initialIndex?: number
 }
 
-export function ImageGallery({ images, productName, isOpen, onClose, initialIndex = 0 }: ImageGalleryProps) {
+export function ImageGallery({ images, productName, productDescription, isOpen, onClose, initialIndex = 0 }: ImageGalleryProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex)
+  const [showShareMenu, setShowShareMenu] = useState(false)
+  const [linkCopied, setLinkCopied] = useState(false)
 
   useEffect(() => {
     setCurrentIndex(initialIndex)
@@ -33,7 +36,6 @@ export function ImageGallery({ images, productName, isOpen, onClose, initialInde
     const fileName = `${productName.replace(/[^a-zA-Z0-9]/g, '_')}_${currentIndex + 1}.jpg`
 
     try {
-      // For base64 images
       if (imageUrl.startsWith('data:')) {
         const link = document.createElement('a')
         link.href = imageUrl
@@ -44,7 +46,6 @@ export function ImageGallery({ images, productName, isOpen, onClose, initialInde
         return
       }
 
-      // For external URLs - fetch and create blob
       const response = await fetch(imageUrl)
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
@@ -56,10 +57,31 @@ export function ImageGallery({ images, productName, isOpen, onClose, initialInde
       document.body.removeChild(link)
       window.URL.revokeObjectURL(url)
     } catch (error) {
-      // Fallback: open in new tab
       window.open(imageUrl, '_blank')
     }
   }, [images, currentIndex, productName])
+
+  // Share via WhatsApp
+  const shareWhatsApp = useCallback(() => {
+    const text = `${productName}${productDescription ? '\n\n' + productDescription : ''}\n\n${window.location.href}`
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`
+    window.open(url, '_blank')
+    setShowShareMenu(false)
+  }, [productName, productDescription])
+
+  // Copy link
+  const copyLink = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      setLinkCopied(true)
+      setTimeout(() => {
+        setLinkCopied(false)
+        setShowShareMenu(false)
+      }, 1500)
+    } catch {
+      setShowShareMenu(false)
+    }
+  }, [])
 
   // Keyboard navigation
   useEffect(() => {
@@ -83,41 +105,78 @@ export function ImageGallery({ images, productName, isOpen, onClose, initialInde
   if (!isOpen || images.length === 0) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/90 backdrop-blur-sm"
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95">
+      {/* Close button */}
+      <button
         onClick={onClose}
-      />
+        className="absolute top-4 right-4 z-10 p-2 text-white/60 hover:text-white transition-colors"
+        title="Fechar (ESC)"
+      >
+        <X className="h-6 w-6" />
+      </button>
 
-      {/* Top buttons */}
-      <div className="absolute top-4 right-4 z-10 flex gap-2">
+      {/* Action buttons - top right */}
+      <div className="absolute top-4 right-14 z-10 flex items-center gap-2">
+        {/* Share button */}
+        <div className="relative">
+          <button
+            onClick={() => setShowShareMenu(!showShareMenu)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm rounded-md transition-colors"
+          >
+            <Share2 className="h-4 w-4" />
+            <span>Compartilhar</span>
+          </button>
+
+          {/* Share menu dropdown */}
+          {showShareMenu && (
+            <div className="absolute top-full right-0 mt-2 bg-white rounded-lg shadow-lg overflow-hidden min-w-[160px]">
+              <button
+                onClick={shareWhatsApp}
+                className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                <MessageCircle className="h-5 w-5 text-green-600" />
+                <span>WhatsApp</span>
+              </button>
+              <button
+                onClick={copyLink}
+                className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-100 transition-colors border-t"
+              >
+                {linkCopied ? (
+                  <>
+                    <Check className="h-5 w-5 text-green-600" />
+                    <span>Copiado!</span>
+                  </>
+                ) : (
+                  <>
+                    <Link2 className="h-5 w-5 text-blue-600" />
+                    <span>Copiar Link</span>
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Download button */}
         <button
           onClick={handleDownload}
-          className="p-2 text-white/80 hover:text-white bg-black/20 hover:bg-black/40 rounded-full transition-colors"
-          title="Baixar imagem"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors"
         >
-          <Download className="h-6 w-6" />
-        </button>
-        <button
-          onClick={onClose}
-          className="p-2 text-white/80 hover:text-white bg-black/20 hover:bg-black/40 rounded-full transition-colors"
-          title="Fechar"
-        >
-          <X className="h-6 w-6" />
+          <Download className="h-4 w-4" />
+          <span>Baixar</span>
         </button>
       </div>
 
       {/* Image counter */}
       {images.length > 1 && (
-        <div className="absolute top-4 left-4 z-10 px-3 py-1.5 bg-black/40 text-white text-sm rounded-full">
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 text-white/60 text-sm">
           {currentIndex + 1} / {images.length}
         </div>
       )}
 
       {/* Main image */}
-      <div className="relative w-full h-full flex items-center justify-center p-4 sm:p-8 md:p-16">
-        <div className="relative w-full h-full max-w-4xl max-h-[80vh]">
+      <div className="relative w-full h-full flex items-center justify-center p-4 pb-32">
+        <div className="relative w-full h-full max-w-5xl max-h-[70vh]">
           <Image
             src={images[currentIndex]}
             alt={`${productName} - Imagem ${currentIndex + 1}`}
@@ -134,88 +193,53 @@ export function ImageGallery({ images, productName, isOpen, onClose, initialInde
         <>
           <button
             onClick={goToPrevious}
-            className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 p-2 sm:p-3 text-white/80 hover:text-white bg-black/20 hover:bg-black/40 rounded-full transition-colors"
+            className="absolute left-4 top-1/2 -translate-y-1/2 p-2 text-white/60 hover:text-white transition-colors"
           >
-            <ChevronLeft className="h-6 w-6 sm:h-8 sm:w-8" />
+            <ChevronLeft className="h-8 w-8" />
           </button>
           <button
             onClick={goToNext}
-            className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 p-2 sm:p-3 text-white/80 hover:text-white bg-black/20 hover:bg-black/40 rounded-full transition-colors"
+            className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-white/60 hover:text-white transition-colors"
           >
-            <ChevronRight className="h-6 w-6 sm:h-8 sm:w-8" />
+            <ChevronRight className="h-8 w-8" />
           </button>
         </>
       )}
 
-      {/* Thumbnails */}
-      {images.length > 1 && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 p-2 bg-black/40 rounded-lg max-w-[90vw] overflow-x-auto">
-          {images.map((img, index) => (
-            <button
-              key={index}
-              onClick={() => setCurrentIndex(index)}
-              className={`relative w-12 h-12 sm:w-16 sm:h-16 rounded-lg overflow-hidden flex-shrink-0 transition-all ${
-                index === currentIndex
-                  ? 'ring-2 ring-white ring-offset-2 ring-offset-black/40'
-                  : 'opacity-60 hover:opacity-100'
-              }`}
-            >
-              <Image
-                src={img}
-                alt={`Miniatura ${index + 1}`}
-                fill
-                className="object-cover"
-                sizes="64px"
-              />
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Bottom info - centered below image */}
+      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6 pt-12">
+        <div className="text-center">
+          <h3 className="text-white font-medium text-lg mb-1">{productName}</h3>
+          {productDescription && (
+            <p className="text-white/70 text-sm max-w-2xl mx-auto">{productDescription}</p>
+          )}
 
-      {/* Product name */}
-      <div className="absolute bottom-20 sm:bottom-24 left-1/2 -translate-x-1/2 text-center">
-        <h3 className="text-white text-lg font-medium px-4 py-2 bg-black/40 rounded-lg">
-          {productName}
-        </h3>
-      </div>
-    </div>
-  )
-}
-
-// Thumbnail gallery for product card
-interface ProductThumbnailsProps {
-  images: string[]
-  onImageClick: (index: number) => void
-}
-
-export function ProductThumbnails({ images, onImageClick }: ProductThumbnailsProps) {
-  if (images.length <= 1) return null
-
-  return (
-    <div className="flex gap-1 mt-2">
-      {images.slice(0, 4).map((img, index) => (
-        <button
-          key={index}
-          onClick={(e) => {
-            e.stopPropagation()
-            onImageClick(index)
-          }}
-          className="relative w-10 h-10 rounded overflow-hidden bg-gray-100 hover:ring-2 hover:ring-blue-500 transition-all"
-        >
-          <Image
-            src={img}
-            alt={`Miniatura ${index + 1}`}
-            fill
-            className="object-cover"
-            sizes="40px"
-          />
-          {index === 3 && images.length > 4 && (
-            <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-              <span className="text-white text-xs font-medium">+{images.length - 4}</span>
+          {/* Thumbnails - centered */}
+          {images.length > 1 && (
+            <div className="flex justify-center gap-2 mt-3">
+              {images.map((img, index) => (
+                <button
+                  key={index}
+                  onClick={() => setCurrentIndex(index)}
+                  className={`relative w-12 h-12 rounded overflow-hidden transition-all ${
+                    index === currentIndex
+                      ? 'ring-2 ring-white'
+                      : 'opacity-50 hover:opacity-100'
+                  }`}
+                >
+                  <Image
+                    src={img}
+                    alt={`Miniatura ${index + 1}`}
+                    fill
+                    className="object-cover"
+                    sizes="48px"
+                  />
+                </button>
+              ))}
             </div>
           )}
-        </button>
-      ))}
+        </div>
+      </div>
     </div>
   )
 }

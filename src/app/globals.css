@@ -7,14 +7,12 @@
   --foreground: #171717;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   color: var(--foreground);
   background: var(--background);
+}
+
+/* Garantir texto visível nos inputs */
+input, textarea, select {
+  color: #171717 !important;
 }

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase, isSupabaseConfigured, uploadImage, deleteImage } from '@/lib/supabase'
-import { isAuthenticated, logout, getCurrentUser, updatePassword, createUser, getLoginHistory, isLocalMode } from '@/lib/auth'
+import { isAuthenticated, isAdmin, logout, getCurrentUser, updatePassword, createUser, getLoginHistory, isLocalMode } from '@/lib/auth'
 import {
   Plus, Pencil, Trash2, X, Package, ArrowLeft, Save,
   FolderOpen, Tag, LogOut, Settings, Upload, Users, History, AlertCircle
@@ -66,7 +66,7 @@ export default function AdminPage() {
   const [categoryForm, setCategoryForm] = useState({ name: '' })
 
   // User Modal
-  const [newUserForm, setNewUserForm] = useState({ email: '', password: '', confirmPassword: '' })
+  const [newUserForm, setNewUserForm] = useState({ email: '', password: '', confirmPassword: '', role: 'viewer' as 'admin' | 'viewer' })
   const [userMessage, setUserMessage] = useState({ type: '', text: '' })
 
   // Login History
@@ -83,7 +83,14 @@ export default function AdminPage() {
     const init = async () => {
       const authenticated = await isAuthenticated()
       if (!authenticated) {
-        router.push('/admin/login')
+        router.push('/login')
+        return
+      }
+
+      // Verificar se é admin
+      const adminStatus = await isAdmin()
+      if (!adminStatus) {
+        router.push('/')
         return
       }
 
@@ -136,7 +143,7 @@ export default function AdminPage() {
 
   const handleLogout = async () => {
     await logout()
-    router.push('/admin/login')
+    router.push('/login')
   }
 
   // Product functions
@@ -378,11 +385,11 @@ export default function AdminPage() {
       return
     }
 
-    const result = await createUser(newUserForm.email, newUserForm.password)
+    const result = await createUser(newUserForm.email, newUserForm.password, newUserForm.role)
 
     if (result.success) {
-      setUserMessage({ type: 'success', text: 'Usuário criado! Verifique o email para confirmar.' })
-      setNewUserForm({ email: '', password: '', confirmPassword: '' })
+      setUserMessage({ type: 'success', text: `Usuário ${newUserForm.role === 'admin' ? 'administrador' : 'visualizador'} criado! Verifique o email para confirmar.` })
+      setNewUserForm({ email: '', password: '', confirmPassword: '', role: 'viewer' })
     } else {
       setUserMessage({ type: 'error', text: result.error || 'Erro ao criar usuário' })
     }
@@ -432,7 +439,7 @@ export default function AdminPage() {
               </Link>
               <div className="h-6 w-px bg-gray-200" />
               <div className="flex items-center gap-2">
-                <Package className="h-6 w-6 text-blue-600" />
+                <Image src="/Logo.png" alt="Logo" width={32} height={32} className="object-contain" />
                 <h1 className="text-xl font-bold text-gray-900">Admin</h1>
               </div>
             </div>
@@ -579,6 +586,37 @@ export default function AdminPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Confirmar Senha</label>
                 <input type="password" required value={newUserForm.confirmPassword} onChange={(e) => setNewUserForm({ ...newUserForm, confirmPassword: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Usuário</label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="role"
+                      value="viewer"
+                      checked={newUserForm.role === 'viewer'}
+                      onChange={(e) => setNewUserForm({ ...newUserForm, role: e.target.value as 'admin' | 'viewer' })}
+                      className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700">Visualizador</span>
+                    <span className="text-xs text-gray-400">(apenas visualiza o catálogo)</span>
+                  </label>
+                </div>
+                <div className="flex gap-4 mt-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="role"
+                      value="admin"
+                      checked={newUserForm.role === 'admin'}
+                      onChange={(e) => setNewUserForm({ ...newUserForm, role: e.target.value as 'admin' | 'viewer' })}
+                      className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700">Administrador</span>
+                    <span className="text-xs text-gray-400">(acesso total ao painel admin)</span>
+                  </label>
+                </div>
               </div>
               <button type="submit" className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"><Plus className="h-4 w-4" /><span>Criar Usuário</span></button>
             </form>

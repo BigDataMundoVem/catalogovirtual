@@ -198,26 +198,26 @@ export default function CatalogPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-20 transition-colors">
-        <div className="px-4 sm:px-6 lg:px-8 py-4">
+        <div className="px-2 sm:px-6 lg:px-8 py-3 sm:py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
               {/* Mobile menu button */}
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="lg:hidden p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                className="lg:hidden p-1.5 sm:p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex-shrink-0"
               >
-                <Menu className="h-6 w-6" />
+                <Menu className="h-5 w-5 sm:h-6 sm:w-6" />
               </button>
-              <div className="flex items-center gap-2">
-                <Image src="/Logo.png" alt="Logo" width={40} height={40} className="object-contain" />
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Catálogo</h1>
+              <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 overflow-hidden">
+                <Image src="/Logo.png" alt="Logo" width={32} height={32} className="object-contain flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10" />
+                <h1 className="text-base sm:text-2xl font-bold text-gray-900 dark:text-white truncate">Catálogo</h1>
               </div>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0 ml-2">
               {/* Theme toggle */}
               <button
                 onClick={toggleTheme}
-                className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
                 title={theme === 'dark' ? 'Modo claro' : 'Modo escuro'}
               >
                 {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
@@ -225,10 +225,11 @@ export default function CatalogPage() {
               {userIsAdmin && (
                 <a
                   href="/admin"
-                  className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                  className="flex items-center gap-1 p-2 sm:p-0 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors flex-shrink-0"
+                  title="Admin"
                 >
                   <Settings className="h-4 w-4" />
-                  Admin
+                  <span className="hidden sm:inline">Admin</span>
                 </a>
               )}
               <button
@@ -236,10 +237,11 @@ export default function CatalogPage() {
                   await logout()
                   router.push('/login')
                 }}
-                className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                className="flex items-center gap-1 p-2 sm:p-0 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors flex-shrink-0"
+                title="Sair"
               >
                 <LogOut className="h-4 w-4" />
-                Sair
+                <span className="hidden sm:inline">Sair</span>
               </button>
             </div>
           </div>

@@ -703,14 +703,16 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              <div>
-                <label className="flex items-center gap-2 cursor-pointer p-3 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={newUserForm.isSalesActive}
-                    onChange={(e) => setNewUserForm({ ...newUserForm, isSalesActive: e.target.checked })}
-                    className="w-4 h-4 text-blue-600 focus:ring-blue-500 rounded"
-                  />
+              <div className="mt-4">
+                <label className="flex items-center gap-3 p-3 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer">
+                  <div className="flex items-center h-5">
+                    <input
+                      type="checkbox"
+                      checked={newUserForm.isSalesActive}
+                      onChange={(e) => setNewUserForm({ ...newUserForm, isSalesActive: e.target.checked })}
+                      className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600"
+                    />
+                  </div>
                   <div className="flex flex-col">
                     <span className="text-sm font-medium text-gray-900 dark:text-white">Participa das Metas (Comercial)</span>
                     <span className="text-xs text-gray-500 dark:text-gray-400">Se marcado, aparecerá no dashboard de vendas</span>

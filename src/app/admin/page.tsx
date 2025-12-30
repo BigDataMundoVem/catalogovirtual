@@ -3,10 +3,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase, isSupabaseConfigured, uploadImage, deleteImage } from '@/lib/supabase'
-import { isAuthenticated, isAdmin, logout, getCurrentUser, updatePassword, createUser, getLoginHistory, isLocalMode } from '@/lib/auth'
+import { isAuthenticated, isAdmin, logout, getCurrentUser, updatePassword, createUser, getLoginHistory, isLocalMode, getUsers } from '@/lib/auth'
+import { getMonthlyGoal, setMonthlyGoal } from '@/lib/goals'
 import {
   Plus, Pencil, Trash2, X, Package, ArrowLeft, Save,
-  FolderOpen, Tag, LogOut, Settings, Upload, Users, History, AlertCircle, Sun, Moon
+  FolderOpen, Tag, LogOut, Settings, Upload, Users, History, AlertCircle, Sun, Moon, Target, Calendar
 } from 'lucide-react'
 import { useTheme } from '@/lib/ThemeContext'
 import Image from 'next/image'
@@ -40,15 +41,22 @@ interface LoginHistoryEntry {
   user_agent: string | null
 }
 
+interface UserData {
+  id: string
+  email: string
+  role: string
+}
+
 export default function AdminPage() {
   const router = useRouter()
   const { theme, toggleTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
-  const [activeTab, setActiveTab] = useState<'products' | 'categories' | 'users' | 'history' | 'settings'>('products')
+  const [activeTab, setActiveTab] = useState<'products' | 'categories' | 'users' | 'history' | 'settings' | 'goals'>('products')
   const [userEmail, setUserEmail] = useState('')
   const [usingLocalMode, setUsingLocalMode] = useState(false)
+  const [users, setUsers] = useState<UserData[]>([])
 
   // Product Modal
   const [isProductModalOpen, setIsProductModalOpen] = useState(false)
@@ -70,6 +78,17 @@ export default function AdminPage() {
   // User Modal
   const [newUserForm, setNewUserForm] = useState({ email: '', password: '', confirmPassword: '', role: 'viewer' as 'admin' | 'viewer' })
   const [userMessage, setUserMessage] = useState({ type: '', text: '' })
+
+  // Goals Modal
+  const [isGoalModalOpen, setIsGoalModalOpen] = useState(false)
+  const [selectedUserForGoal, setSelectedUserForGoal] = useState<UserData | null>(null)
+  const [goalForm, setGoalForm] = useState({
+    month: new Date().getMonth() + 1,
+    year: new Date().getFullYear(),
+    contacts: 0,
+    quotes: 0,
+    orders: 0
+  })
 
   // Login History
   const [loginHistory, setLoginHistory] = useState<LoginHistoryEntry[]>([])
@@ -131,6 +150,11 @@ export default function AdminPage() {
       if (storedProducts) setProducts(JSON.parse(storedProducts))
       if (storedCategories) setCategories(JSON.parse(storedCategories))
     }
+  }
+  
+  const loadUsers = async () => {
+    const fetchedUsers = await getUsers()
+    setUsers(fetchedUsers)
   }
 
   const saveLocalData = (prods: Product[], cats: Category[]) => {
@@ -392,8 +416,50 @@ export default function AdminPage() {
     if (result.success) {
       setUserMessage({ type: 'success', text: `Usuário ${newUserForm.role === 'admin' ? 'administrador' : 'visualizador'} criado! Verifique o email para confirmar.` })
       setNewUserForm({ email: '', password: '', confirmPassword: '', role: 'viewer' })
+      loadUsers()
     } else {
       setUserMessage({ type: 'error', text: result.error || 'Erro ao criar usuário' })
+    }
+  }
+
+  // Goals functions
+  const openGoalModal = async (user: UserData) => {
+    setSelectedUserForGoal(user)
+    // Try to load existing goal for current month
+    const existing = await getMonthlyGoal(user.id, goalForm.month, goalForm.year)
+    if (existing) {
+      setGoalForm({
+        ...goalForm,
+        contacts: existing.target_contacts,
+        quotes: existing.target_quotes,
+        orders: existing.target_orders
+      })
+    } else {
+      setGoalForm({
+        ...goalForm,
+        contacts: 0,
+        quotes: 0,
+        orders: 0
+      })
+    }
+    setIsGoalModalOpen(true)
+  }
+
+  const handleGoalSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedUserForGoal) return
+
+    const result = await setMonthlyGoal(selectedUserForGoal.id, goalForm.month, goalForm.year, {
+      contacts: goalForm.contacts,
+      quotes: goalForm.quotes,
+      orders: goalForm.orders
+    })
+
+    if (result.success) {
+      setIsGoalModalOpen(false)
+      alert('Meta salva com sucesso!')
+    } else {
+      alert('Erro ao salvar meta: ' + result.error)
     }
   }
 
@@ -480,9 +546,14 @@ export default function AdminPage() {
             <FolderOpen className="h-5 w-5" /><span>Famílias ({categories.length})</span>
           </button>
           {!usingLocalMode && (
-            <button onClick={() => setActiveTab('users')} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${activeTab === 'users' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
-              <Users className="h-5 w-5" /><span>Usuários</span>
-            </button>
+            <>
+              <button onClick={() => { setActiveTab('users'); loadUsers(); }} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${activeTab === 'users' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                <Users className="h-5 w-5" /><span>Usuários</span>
+              </button>
+              <button onClick={() => { setActiveTab('goals'); loadUsers(); }} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${activeTab === 'goals' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                <Target className="h-5 w-5" /><span>Metas</span>
+              </button>
+            </>
           )}
           <button onClick={() => { setActiveTab('history'); loadLoginHistory() }} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${activeTab === 'history' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
             <History className="h-5 w-5" /><span>Histórico</span>
@@ -629,6 +700,39 @@ export default function AdminPage() {
               </div>
               <button type="submit" className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"><Plus className="h-4 w-4" /><span>Criar Usuário</span></button>
             </form>
+          </div>
+        )}
+
+        {/* Goals Tab */}
+        {activeTab === 'goals' && !usingLocalMode && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden transition-colors">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Gerenciar Metas de Vendedores</h2>
+            </div>
+            
+            {users.length > 0 ? (
+              <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                {users.map((user) => (
+                  <div key={user.id} className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                    <div>
+                      <div className="font-medium text-gray-900 dark:text-white">{user.email}</div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400 capitalize">{user.role}</div>
+                    </div>
+                    <button 
+                      onClick={() => openGoalModal(user)}
+                      className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+                    >
+                      <Target className="h-4 w-4" />
+                      Definir Metas
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                Carregando usuários...
+              </div>
+            )}
           </div>
         )}
 
@@ -788,6 +892,89 @@ export default function AdminPage() {
                 <div className="flex gap-3 pt-4">
                   <button type="button" onClick={closeCategoryModal} className="flex-1 px-4 py-2 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">Cancelar</button>
                   <button type="submit" className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"><Save className="h-4 w-4" /><span>Salvar</span></button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Goal Modal */}
+      {isGoalModalOpen && selectedUserForGoal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/50" onClick={() => setIsGoalModalOpen(false)} />
+            <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Definir Metas</h2>
+                <button onClick={() => setIsGoalModalOpen(false)} className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg"><X className="h-5 w-5" /></button>
+              </div>
+              
+              <div className="mb-4 text-sm text-gray-500 dark:text-gray-400">
+                Usuário: <span className="font-medium text-gray-900 dark:text-white">{selectedUserForGoal.email}</span>
+              </div>
+
+              <form onSubmit={handleGoalSubmit} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mês</label>
+                    <select 
+                      value={goalForm.month} 
+                      onChange={(e) => setGoalForm({...goalForm, month: parseInt(e.target.value)})}
+                      className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    >
+                      {Array.from({ length: 12 }, (_, i) => (
+                        <option key={i + 1} value={i + 1}>{new Date(0, i).toLocaleString('pt-BR', { month: 'long' })}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ano</label>
+                    <input 
+                      type="number" 
+                      value={goalForm.year} 
+                      onChange={(e) => setGoalForm({...goalForm, year: parseInt(e.target.value)})} 
+                      className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" 
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-3 pt-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Meta de Contatos</label>
+                    <input 
+                      type="number" 
+                      min="0"
+                      value={goalForm.contacts} 
+                      onChange={(e) => setGoalForm({...goalForm, contacts: parseInt(e.target.value)})} 
+                      className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Meta de Orçamentos</label>
+                    <input 
+                      type="number" 
+                      min="0"
+                      value={goalForm.quotes} 
+                      onChange={(e) => setGoalForm({...goalForm, quotes: parseInt(e.target.value)})} 
+                      className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Meta de Pedidos</label>
+                    <input 
+                      type="number" 
+                      min="0"
+                      value={goalForm.orders} 
+                      onChange={(e) => setGoalForm({...goalForm, orders: parseInt(e.target.value)})} 
+                      className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" 
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button type="button" onClick={() => setIsGoalModalOpen(false)} className="flex-1 px-4 py-2 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">Cancelar</button>
+                  <button type="submit" className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"><Save className="h-4 w-4" /><span>Salvar Metas</span></button>
                 </div>
               </form>
             </div>

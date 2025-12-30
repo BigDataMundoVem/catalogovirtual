@@ -247,6 +247,45 @@ export async function getLoginHistory(limit: number = 50): Promise<LocalLoginHis
   return data
 }
 
+// Get all users (admin only)
+export async function getUsers(): Promise<{ id: string; email: string; role: string }[]> {
+  if (!isSupabaseConfigured) {
+    // Local mode mock
+    return [
+      { id: '1', email: DEFAULT_ADMIN_USER, role: 'admin' },
+      { id: '2', email: DEFAULT_VIEWER_USER, role: 'viewer' }
+    ]
+  }
+
+  // Fetch roles
+  const { data: rolesData, error: rolesError } = await (supabase as any)
+    .from('user_roles')
+    .select('*')
+
+  if (rolesError) {
+    console.error('Error fetching roles:', rolesError)
+    return []
+  }
+
+  // Fetch latest login info for emails (best effort since we don't have public profiles table)
+  const { data: historyData } = await (supabase as any)
+    .from('login_history')
+    .select('user_id, user_email')
+    .order('logged_in_at', { ascending: false })
+
+  // Map to combine info
+  const users = rolesData.map((role: any) => {
+    const history = historyData?.find((h: any) => h.user_id === role.user_id)
+    return {
+      id: role.user_id,
+      role: role.role,
+      email: history?.user_email || 'Email desconhecido'
+    }
+  })
+
+  return users
+}
+
 // Auth state change listener
 export function onAuthStateChange(callback: (session: Session | null) => void) {
   if (!isSupabaseConfigured) {

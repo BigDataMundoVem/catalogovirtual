@@ -76,7 +76,7 @@ export default function AdminPage() {
   const [categoryForm, setCategoryForm] = useState({ name: '' })
 
   // User Modal
-  const [newUserForm, setNewUserForm] = useState({ email: '', password: '', confirmPassword: '', role: 'viewer' as 'admin' | 'viewer' })
+  const [newUserForm, setNewUserForm] = useState({ email: '', password: '', confirmPassword: '', role: 'viewer' as 'admin' | 'viewer', name: '', isSalesActive: true })
   const [userMessage, setUserMessage] = useState({ type: '', text: '' })
 
   // Goals Modal
@@ -411,11 +411,11 @@ export default function AdminPage() {
       return
     }
 
-    const result = await createUser(newUserForm.email, newUserForm.password, newUserForm.role)
+    const result = await createUser(newUserForm.email, newUserForm.password, newUserForm.role, newUserForm.name, newUserForm.isSalesActive)
 
     if (result.success) {
       setUserMessage({ type: 'success', text: `Usuário ${newUserForm.role === 'admin' ? 'administrador' : 'visualizador'} criado! Verifique o email para confirmar.` })
-      setNewUserForm({ email: '', password: '', confirmPassword: '', role: 'viewer' })
+      setNewUserForm({ email: '', password: '', confirmPassword: '', role: 'viewer', name: '', isSalesActive: true })
       loadUsers()
     } else {
       setUserMessage({ type: 'error', text: result.error || 'Erro ao criar usuário' })
@@ -656,6 +656,10 @@ export default function AdminPage() {
             <form onSubmit={handleCreateUser} className="p-6 space-y-4 max-w-md">
               {userMessage.text && <div className={`p-3 rounded-lg text-sm ${userMessage.type === 'error' ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400' : 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400'}`}>{userMessage.text}</div>}
               <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nome Completo</label>
+                <input type="text" required value={newUserForm.name} onChange={(e) => setNewUserForm({ ...newUserForm, name: e.target.value })} className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="Ex: Maria Silva" />
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
                 <input type="email" required value={newUserForm.email} onChange={(e) => setNewUserForm({ ...newUserForm, email: e.target.value })} className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="novo@usuario.com" />
               </div>
@@ -698,6 +702,22 @@ export default function AdminPage() {
                   </label>
                 </div>
               </div>
+
+              <div>
+                <label className="flex items-center gap-2 cursor-pointer p-3 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={newUserForm.isSalesActive}
+                    onChange={(e) => setNewUserForm({ ...newUserForm, isSalesActive: e.target.checked })}
+                    className="w-4 h-4 text-blue-600 focus:ring-blue-500 rounded"
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">Participa das Metas (Comercial)</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">Se marcado, aparecerá no dashboard de vendas</span>
+                  </div>
+                </label>
+              </div>
+
               <button type="submit" className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"><Plus className="h-4 w-4" /><span>Criar Usuário</span></button>
             </form>
           </div>

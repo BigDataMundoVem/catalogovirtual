@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Target, Phone, FileText, ShoppingBag, Plus, Calendar, ChevronLeft, ChevronRight, X, Save, AlertCircle, Users, Search, Lock, Check, CheckCircle2 } from 'lucide-react'
-import { isAuthenticated, getCurrentUser, isLocalMode, isAdmin } from '@/lib/auth'
+import { isAuthenticated, getCurrentUser, isLocalMode, isAdmin, isSalesActive } from '@/lib/auth'
 import { getUserPerformance, getLeaderboardData, UserPerformance, LeaderboardEntry, getWeeklyLogs, upsertPerformanceLog, PerformanceLog } from '@/lib/goals'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -57,14 +57,23 @@ export default function GoalsPage() {
         return
       }
       
+      const adminStatus = await isAdmin()
+      setUserIsAdmin(adminStatus)
+
+      // Access Control
+      if (!adminStatus) {
+        const salesActive = await isSalesActive()
+        if (!salesActive) {
+          router.push('/') // Redirect if not allowed
+          return
+        }
+      }
+      
       setIsLocal(isLocalMode())
       const user = await getCurrentUser()
       if (user) {
         setUserId(user.id)
       }
-      
-      const adminStatus = await isAdmin()
-      setUserIsAdmin(adminStatus)
       
       setMounted(true)
     }

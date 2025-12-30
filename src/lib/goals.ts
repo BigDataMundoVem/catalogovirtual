@@ -192,6 +192,7 @@ export async function getLeaderboardData(month: number, year: number): Promise<L
   const { data: profiles, error: profileError } = await (supabase as any)
     .from('profiles')
     .select('*')
+    .eq('is_sales_active', true) // Only show sales team
 
   if (profileError) {
     console.error('Error fetching profiles:', profileError)

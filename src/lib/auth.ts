@@ -161,6 +161,23 @@ export async function isAdmin(): Promise<boolean> {
   return role === 'admin'
 }
 
+// Check if user is sales active
+export async function isSalesActive(): Promise<boolean> {
+  const user = await getCurrentUser()
+  if (!user || !('id' in user)) return false
+
+  if (!isSupabaseConfigured) return true // Local mode defaults to true
+
+  const { data } = await (supabase as any)
+    .from('profiles')
+    .select('is_sales_active')
+    .eq('id', user.id)
+    .single()
+
+  // Se for nulo (não configurado), assume true para não bloquear indevidamente
+  return data?.is_sales_active ?? true 
+}
+
 // Get session
 export async function getSession(): Promise<Session | null> {
   if (!isSupabaseConfigured) return null
@@ -183,7 +200,7 @@ export async function getCurrentUser(): Promise<User | { id: string; email: stri
 }
 
 // Create user (admin only)
-export async function createUser(email: string, password: string, role: UserRole = 'viewer'): Promise<{ success: boolean; error?: string }> {
+export async function createUser(email: string, password: string, role: UserRole = 'viewer', fullName: string = '', isSalesActive: boolean = true): Promise<{ success: boolean; error?: string }> {
   if (!isSupabaseConfigured) {
     return { success: false, error: 'Supabase não configurado. Configure para criar múltiplos usuários.' }
   }
@@ -199,9 +216,19 @@ export async function createUser(email: string, password: string, role: UserRole
 
   // Add role to user_roles table
   if (data.user) {
+    // 1. Define Role
     await (supabase as any).from('user_roles').insert({
       user_id: data.user.id,
       role: role,
+    })
+
+    // 2. Create Public Profile
+    await (supabase as any).from('profiles').insert({
+      id: data.user.id,
+      email: email,
+      full_name: fullName || email.split('@')[0], // Usa o nome fornecido ou parte do email
+      role: role,
+      is_sales_active: isSalesActive
     })
   }
 

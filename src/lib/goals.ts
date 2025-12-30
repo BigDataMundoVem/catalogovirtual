@@ -122,6 +122,89 @@ export async function getUserPerformance(userId: string, month: number, year: nu
   }
 }
 
+export interface UserProfile {
+  id: string
+  full_name: string | null
+  email: string | null
+  role: string
+  avatar_url: string | null
+}
+
+export interface LeaderboardEntry {
+  user: UserProfile
+  goals: MonthlyGoal | null
+  realized: {
+    contacts: number
+    quotes: number
+    orders: number
+  }
+}
+
+// ... existing code ...
+
+export async function getLeaderboardData(month: number, year: number): Promise<LeaderboardEntry[]> {
+  if (!isSupabaseConfigured || !supabase) return []
+
+  // 1. Fetch all profiles (or simulate if user_roles/auth is tricky to join directly without backend functions)
+  // Ideally, we query the 'profiles' table we just created.
+  const { data: profiles, error: profileError } = await (supabase as any)
+    .from('profiles')
+    .select('*')
+
+  if (profileError) {
+    console.error('Error fetching profiles:', profileError)
+    // Fallback: try to get users from our local auth helper logic or return empty if strict
+    return []
+  }
+
+  // 2. Fetch all goals for the month
+  const { data: goals } = await (supabase as any)
+    .from('monthly_goals')
+    .select('*')
+    .eq('month', month)
+    .eq('year', year)
+
+  // 3. Fetch all logs for the month
+  const startDate = `${year}-${String(month).padStart(2, '0')}-01`
+  const lastDay = new Date(year, month, 0).getDate()
+  const endDate = `${year}-${String(month).padStart(2, '0')}-${lastDay}`
+
+  const { data: logs } = await (supabase as any)
+    .from('performance_logs')
+    .select('*')
+    .gte('entry_date', startDate)
+    .lte('entry_date', endDate)
+
+  // 4. Aggregate data
+  const leaderboard: LeaderboardEntry[] = profiles.map((profile: any) => {
+    const userGoal = goals?.find((g: any) => g.user_id === profile.id) || null
+    const userLogs = logs?.filter((l: any) => l.user_id === profile.id) || []
+
+    const realized = userLogs.reduce(
+      (acc: any, log: any) => ({
+        contacts: acc.contacts + (log.contacts_done || 0),
+        quotes: acc.quotes + (log.quotes_done || 0),
+        orders: acc.orders + (log.orders_done || 0)
+      }),
+      { contacts: 0, quotes: 0, orders: 0 }
+    )
+
+    return {
+      user: {
+        id: profile.id,
+        full_name: profile.full_name || profile.email?.split('@')[0] || 'Usuário',
+        email: profile.email,
+        role: profile.role,
+        avatar_url: profile.avatar_url
+      },
+      goals: userGoal,
+      realized
+    }
+  })
+
+  return leaderboard
+}
+
 // Admin Functions
 export async function setMonthlyGoal(
   userId: string,

@@ -94,6 +94,48 @@ export async function addPerformanceLog(
   return { success: true }
 }
 
+export async function getWeeklyLogs(userId: string, startDate: string, endDate: string) {
+  if (!isSupabaseConfigured || !supabase) return []
+
+  const { data, error } = await (supabase as any)
+    .from('performance_logs')
+    .select('*')
+    .eq('user_id', userId)
+    .gte('entry_date', startDate)
+    .lte('entry_date', endDate)
+    .order('entry_date', { ascending: true })
+
+  if (error) {
+    console.error('Error fetching weekly logs:', error)
+    return []
+  }
+
+  return data as PerformanceLog[]
+}
+
+export async function upsertPerformanceLog(
+  userId: string,
+  data: { contacts: number; quotes: number; orders: number; notes?: string; date: string }
+) {
+  if (!isSupabaseConfigured || !supabase) return { success: false, error: 'Supabase não configurado' }
+
+  const { error } = await (supabase as any).from('performance_logs').upsert({
+    user_id: userId,
+    contacts_done: data.contacts,
+    quotes_done: data.quotes,
+    orders_done: data.orders,
+    notes: data.notes,
+    entry_date: data.date
+  }, { onConflict: 'user_id, entry_date' })
+
+  if (error) {
+    console.error('Error upserting log:', error)
+    return { success: false, error: error.message }
+  }
+
+  return { success: true }
+}
+
 export async function getUserPerformance(userId: string, month: number, year: number): Promise<UserPerformance> {
   if (!isSupabaseConfigured || !supabase) {
     return {

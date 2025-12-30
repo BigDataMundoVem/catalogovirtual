@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Target, Phone, FileText, ShoppingBag, Plus, Calendar, ChevronLeft, ChevronRight, X, Save, AlertCircle, Users, Search } from 'lucide-react'
+import { ArrowLeft, Target, Phone, FileText, ShoppingBag, Plus, Calendar, ChevronLeft, ChevronRight, X, Save, AlertCircle, Users, Search, Lock, Check, CheckCircle2 } from 'lucide-react'
 import { isAuthenticated, getCurrentUser, isLocalMode, isAdmin } from '@/lib/auth'
-import { getUserPerformance, addPerformanceLog, getLeaderboardData, UserPerformance, LeaderboardEntry } from '@/lib/goals'
+import { getUserPerformance, getLeaderboardData, UserPerformance, LeaderboardEntry, getWeeklyLogs, upsertPerformanceLog, PerformanceLog } from '@/lib/goals'
 import Link from 'next/link'
 import Image from 'next/image'
 
@@ -20,16 +20,34 @@ export default function GoalsPage() {
   // Data State
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [currentUserEntry, setCurrentUserEntry] = useState<LeaderboardEntry | null>(null)
-
-  // Modal State
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [logForm, setLogForm] = useState({
+  
+  // Weekly Timesheet State
+  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(getMonday(new Date()))
+  const [weeklyLogs, setWeeklyLogs] = useState<PerformanceLog[]>([])
+  const [expandedDay, setExpandedDay] = useState<string | null>(null) // Date string YYYY-MM-DD
+  const [dayForm, setDayForm] = useState({
     contacts: 0,
     quotes: 0,
-    orders: 0,
-    notes: ''
+    orders: 0
   })
-  const [submitting, setSubmitting] = useState(false)
+  const [savingDay, setSavingDay] = useState<string | null>(null)
+
+  function getMonday(d: Date) {
+    d = new Date(d);
+    var day = d.getDay(),
+        diff = d.getDate() - day + (day == 0 ? -6 : 1);
+    return new Date(d.setDate(diff));
+  }
+
+  function getWeekDays(startDate: Date) {
+    const days = []
+    for (let i = 0; i < 5; i++) {
+      const d = new Date(startDate)
+      d.setDate(startDate.getDate() + i)
+      days.push(d)
+    }
+    return days
+  }
 
   useEffect(() => {
     const init = async () => {
@@ -55,77 +73,109 @@ export default function GoalsPage() {
 
   useEffect(() => {
     if (userId) {
-      loadData()
+      if (userIsAdmin) {
+        loadLeaderboard()
+      } else {
+        loadWeeklyData()
+      }
     }
-  }, [userId, currentDate])
+  }, [userId, currentDate, currentWeekStart, userIsAdmin])
 
-  const loadData = async () => {
+  const loadLeaderboard = async () => {
     setLoading(true)
     try {
       if (isLocal) {
-        // Mock data for local mode with multiple users
-        const mockEntries: LeaderboardEntry[] = [
-          {
-            user: { id: userId!, full_name: 'Você', email: 'voce@exemplo.com', role: 'vendedor', avatar_url: null },
-            goals: { id: '1', user_id: userId!, month: currentDate.getMonth() + 1, year: currentDate.getFullYear(), target_contacts: 100, target_quotes: 20, target_orders: 5 },
-            realized: { contacts: 45, quotes: 8, orders: 2 }
-          },
-          {
-            user: { id: 'user2', full_name: 'João Silva', email: 'joao@exemplo.com', role: 'vendedor', avatar_url: null },
-            goals: { id: '2', user_id: 'user2', month: currentDate.getMonth() + 1, year: currentDate.getFullYear(), target_contacts: 120, target_quotes: 30, target_orders: 8 },
-            realized: { contacts: 90, quotes: 25, orders: 6 }
-          },
-          {
-            user: { id: 'user3', full_name: 'Maria Souza', email: 'maria@exemplo.com', role: 'vendedor', avatar_url: null },
-            goals: { id: '3', user_id: 'user3', month: currentDate.getMonth() + 1, year: currentDate.getFullYear(), target_contacts: 80, target_quotes: 15, target_orders: 4 },
-            realized: { contacts: 20, quotes: 2, orders: 0 }
-          }
-        ]
-        setLeaderboard(mockEntries)
-        setCurrentUserEntry(mockEntries.find(e => e.user.id === userId) || null)
+        // Mock data
+        setLeaderboard([]) 
       } else {
         const data = await getLeaderboardData(currentDate.getMonth() + 1, currentDate.getFullYear())
         setLeaderboard(data)
-        if (userId) {
-          const myEntry = data.find(e => e.user.id === userId)
-          setCurrentUserEntry(myEntry || null)
-        }
       }
     } catch (error) {
-      console.error('Error loading data:', error)
+      console.error('Error loading leaderboard:', error)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleLogSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const loadWeeklyData = async () => {
     if (!userId) return
+    setLoading(true)
+    try {
+      // Load monthly summary for header
+      const performance = await getUserPerformance(userId, currentDate.getMonth() + 1, currentDate.getFullYear())
+      setCurrentUserEntry({
+        user: { id: userId, full_name: 'Me', email: '', role: 'viewer', avatar_url: null },
+        goals: performance.goals,
+        realized: performance.realized
+      })
 
-    setSubmitting(true)
-    
+      // Load weekly logs
+      const weekDays = getWeekDays(currentWeekStart)
+      const startStr = weekDays[0].toISOString().split('T')[0]
+      const endStr = weekDays[4].toISOString().split('T')[0]
+      
+      if (isLocal) {
+        setWeeklyLogs([])
+      } else {
+        const logs = await getWeeklyLogs(userId, startStr, endStr)
+        setWeeklyLogs(logs)
+      }
+    } catch (error) {
+      console.error('Error loading weekly data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDayClick = (dateStr: string, existingLog?: PerformanceLog) => {
+    // Check if future date
+    if (new Date(dateStr) > new Date()) return
+
+    if (expandedDay === dateStr) {
+      setExpandedDay(null)
+    } else {
+      setExpandedDay(dateStr)
+      setDayForm({
+        contacts: existingLog?.contacts_done || 0,
+        quotes: existingLog?.quotes_done || 0,
+        orders: existingLog?.orders_done || 0
+      })
+    }
+  }
+
+  const handleSaveDay = async (dateStr: string) => {
+    if (!userId) return
+    setSavingDay(dateStr)
+
     if (isLocal) {
-      alert('Modo local: Dados não serão salvos no banco.')
-      setSubmitting(false)
-      setIsModalOpen(false)
+      alert('Modo local não salva dados.')
+      setSavingDay(null)
       return
     }
 
-    const result = await addPerformanceLog(userId, {
-      contacts: logForm.contacts,
-      quotes: logForm.quotes,
-      orders: logForm.orders,
-      notes: logForm.notes
+    const result = await upsertPerformanceLog(userId, {
+      date: dateStr,
+      contacts: dayForm.contacts,
+      quotes: dayForm.quotes,
+      orders: dayForm.orders
     })
 
     if (result.success) {
-      await loadData()
-      setLogForm({ contacts: 0, quotes: 0, orders: 0, notes: '' })
-      setIsModalOpen(false)
+      await loadWeeklyData()
+      setExpandedDay(null)
     } else {
       alert('Erro ao salvar: ' + result.error)
     }
-    setSubmitting(false)
+    setSavingDay(null)
+  }
+
+  const changeWeek = (offset: number) => {
+    const newStart = new Date(currentWeekStart)
+    newStart.setDate(newStart.getDate() + (offset * 7))
+    setCurrentWeekStart(newStart)
+    // Also update month if the week crosses month boundary significantly? 
+    // Ideally keep them separate or sync them. For simplicity, we keep month selector independent for summary.
   }
 
   if (!mounted) {
@@ -137,6 +187,7 @@ export default function GoalsPage() {
   }
 
   const monthName = currentDate.toLocaleString('pt-BR', { month: 'long', year: 'numeric' })
+  const weekRangeStr = `${currentWeekStart.getDate()} ${currentWeekStart.toLocaleString('pt-BR', { month: 'short' })} - ${new Date(currentWeekStart.getTime() + 4 * 86400000).getDate()} ${new Date(currentWeekStart.getTime() + 4 * 86400000).toLocaleString('pt-BR', { month: 'short' })}`
 
   // Progress Bar Logic
   const calculateProgress = (current: number, target: number) => {
@@ -152,7 +203,7 @@ export default function GoalsPage() {
     return { percent, color }
   }
 
-  // Component for Table Cell
+  // Helper for Table Cell
   const KPICell = ({ current, target, icon: Icon }: { current: number, target: number, icon: any }) => {
     const { percent, color } = calculateProgress(current, target)
     return (
@@ -187,28 +238,20 @@ export default function GoalsPage() {
                 <Target className="h-6 w-6 text-green-600 dark:text-green-400" />
               </div>
               <div>
-                <h1 className="text-xl font-bold">Metas do Mês</h1>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Acompanhamento de Equipe</p>
+                <h1 className="text-xl font-bold">Metas</h1>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{userIsAdmin ? 'Gestão de Equipe' : 'Minha Produção'}</p>    
               </div>
             </div>
           </div>
           
-          <div className="flex items-center gap-2">
-            {userIsAdmin && (
-              <Link href="/admin" className="hidden sm:flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">
+          {userIsAdmin && (
+            <div className="flex items-center gap-2">
+              <Link href="/admin" className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">
                 <Users className="h-4 w-4" />
-                Gerenciar Equipe
+                <span className="hidden sm:inline">Admin</span>
               </Link>
-            )}
-            <button 
-              onClick={() => setIsModalOpen(true)}
-              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20 font-medium text-sm"
-            >
-              <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">Lançar Produção</span>
-              <span className="sm:hidden">Lançar</span>
-            </button>
-          </div>
+            </div>
+          )}
         </div>
       </header>
 
@@ -220,191 +263,238 @@ export default function GoalsPage() {
           </div>
         )}
 
-        {/* Month Selector */}
-        <div className="flex items-center justify-center mb-8">
-          <div className="flex items-center bg-white dark:bg-gray-800 p-1.5 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-            <button 
-              onClick={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() - 1)))}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-            <div className="flex items-center gap-2 font-semibold capitalize px-6 min-w-[200px] justify-center">
-              <Calendar className="h-5 w-5 text-gray-500" />
-              {monthName}
-            </div>
-            <button 
-              onClick={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + 1)))}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-            >
-              <ChevronRight className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
-          </div>
-        ) : (
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-            {/* Table Header */}
-            <div className="grid grid-cols-12 gap-4 px-6 py-4 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              <div className="col-span-4 sm:col-span-3">Usuário</div>
-              <div className="col-span-8 sm:col-span-3 text-center sm:text-left">Contatos</div>
-              <div className="col-span-6 sm:col-span-3 hidden sm:block">Orçamentos</div>
-              <div className="col-span-6 sm:col-span-3 hidden sm:block">Pedidos</div>
-            </div>
-
-            {/* Table Body */}
-            <div className="divide-y divide-gray-200 dark:divide-gray-700">
-              {leaderboard.length === 0 ? (
-                <div className="p-8 text-center text-gray-500 dark:text-gray-400">
-                  Nenhum registro encontrado para este mês.
-                </div>
-              ) : (
-                leaderboard.map((entry) => (
-                  <div key={entry.user.id} className={`grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors ${entry.user.id === userId ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''}`}>
-                    {/* User Column */}
-                    <div className="col-span-4 sm:col-span-3 flex items-center gap-3 overflow-hidden">
-                      <div className="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center flex-shrink-0 text-gray-500">
-                        {entry.user.avatar_url ? (
-                          <img src={entry.user.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
-                        ) : (
-                          <span className="text-sm font-semibold">{entry.user.full_name?.charAt(0) || 'U'}</span>
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-medium text-gray-900 dark:text-white truncate text-sm sm:text-base">
-                          {entry.user.full_name}
-                          {entry.user.id === userId && <span className="ml-2 text-xs text-blue-600 dark:text-blue-400 font-normal">(Você)</span>}
-                        </p>
-                        <p className="text-xs text-gray-500 truncate hidden sm:block">{entry.user.role}</p>
-                      </div>
-                    </div>
-
-                    {/* Contatos - Visible on Mobile */}
-                    <div className="col-span-8 sm:col-span-3 flex justify-center sm:justify-start">
-                      <KPICell current={entry.realized.contacts} target={entry.goals?.target_contacts || 0} icon={Phone} />
-                    </div>
-
-                    {/* Orçamentos - Hidden on Mobile */}
-                    <div className="col-span-6 sm:col-span-3 hidden sm:flex">
-                      <KPICell current={entry.realized.quotes} target={entry.goals?.target_quotes || 0} icon={FileText} />
-                    </div>
-
-                    {/* Pedidos - Hidden on Mobile */}
-                    <div className="col-span-6 sm:col-span-3 hidden sm:flex">
-                      <KPICell current={entry.realized.orders} target={entry.goals?.target_orders || 0} icon={ShoppingBag} />
-                    </div>
-
-                    {/* Mobile Only: Extra Row for Quotes/Orders if needed, or keeping it simple */}
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        )}
-      </main>
-
-      {/* Modal Lançamento */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4">
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
-            
-            <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6 transform transition-all">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Nova Produção</h2>
+        {/* --- VIEW FOR ADMIN: LEADERBOARD TABLE --- */}
+        {userIsAdmin ? (
+          <>
+            {/* Month Selector */}
+            <div className="flex items-center justify-center mb-8">
+              <div className="flex items-center bg-white dark:bg-gray-800 p-1.5 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
                 <button 
-                  onClick={() => setIsModalOpen(false)}
-                  className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  onClick={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() - 1)))}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"     
                 >
-                  <X className="h-5 w-5" />
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                <div className="flex items-center gap-2 font-semibold capitalize px-6 min-w-[200px] justify-center">
+                  <Calendar className="h-5 w-5 text-gray-500" />
+                  {monthName}
+                </div>
+                <button 
+                  onClick={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + 1)))}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"     
+                >
+                  <ChevronRight className="h-5 w-5" />
                 </button>
               </div>
-
-              <form onSubmit={handleLogSubmit} className="space-y-6">
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 text-center">Contatos</label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                        <Plus className="h-4 w-4" />
-                      </div>
-                      <input 
-                        type="number" 
-                        min="0"
-                        value={logForm.contacts}
-                        onChange={e => setLogForm({...logForm, contacts: parseInt(e.target.value) || 0})}
-                        className="w-full pl-8 pr-3 py-2 text-center border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-gray-50 dark:bg-gray-700" 
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 text-center">Orçamentos</label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                        <Plus className="h-4 w-4" />
-                      </div>
-                      <input 
-                        type="number" 
-                        min="0"
-                        value={logForm.quotes}
-                        onChange={e => setLogForm({...logForm, quotes: parseInt(e.target.value) || 0})}
-                        className="w-full pl-8 pr-3 py-2 text-center border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-gray-50 dark:bg-gray-700" 
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 text-center">Pedidos</label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                        <Plus className="h-4 w-4" />
-                      </div>
-                      <input 
-                        type="number" 
-                        min="0"
-                        value={logForm.orders}
-                        onChange={e => setLogForm({...logForm, orders: parseInt(e.target.value) || 0})}
-                        className="w-full pl-8 pr-3 py-2 text-center border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-gray-50 dark:bg-gray-700" 
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Observações (Opcional)</label>
-                  <textarea 
-                    rows={3}
-                    value={logForm.notes}
-                    onChange={e => setLogForm({...logForm, notes: e.target.value})}
-                    placeholder="Ex: Fechei com cliente X..."
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 resize-none"
-                  />
-                </div>
-
-                <button 
-                  type="submit" 
-                  disabled={submitting}
-                  className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-3 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-                >
-                  {submitting ? (
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <Save className="h-5 w-5" />
-                      Salvar Lançamento
-                    </>
-                  )}
-                </button>
-              </form>
             </div>
-          </div>
-        </div>
-      )}
+
+            {loading ? (
+              <div className="flex justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+              </div>
+            ) : (
+              <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                <div className="grid grid-cols-12 gap-4 px-6 py-4 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <div className="col-span-4 sm:col-span-3">Usuário</div>
+                  <div className="col-span-8 sm:col-span-3 text-center sm:text-left">Contatos</div>
+                  <div className="col-span-6 sm:col-span-3 hidden sm:block">Orçamentos</div>
+                  <div className="col-span-6 sm:col-span-3 hidden sm:block">Pedidos</div>
+                </div>
+                <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {leaderboard.length === 0 ? (
+                    <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+                      Nenhum registro encontrado para este mês.
+                    </div>
+                  ) : (
+                    leaderboard.map((entry) => (
+                      <div key={entry.user.id} className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                        <div className="col-span-4 sm:col-span-3 flex items-center gap-3 overflow-hidden">
+                          <div className="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center flex-shrink-0 text-gray-500">
+                            {entry.user.avatar_url ? (
+                              <img src={entry.user.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
+                            ) : (
+                              <span className="text-sm font-semibold">{entry.user.full_name?.charAt(0) || 'U'}</span>
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-medium text-gray-900 dark:text-white truncate text-sm sm:text-base">
+                              {entry.user.full_name}
+                            </p>
+                            <p className="text-xs text-gray-500 truncate hidden sm:block">{entry.user.role}</p>
+                          </div>
+                        </div>
+                        <div className="col-span-8 sm:col-span-3 flex justify-center sm:justify-start">     
+                          <KPICell current={entry.realized.contacts} target={entry.goals?.target_contacts || 0} icon={Phone} />
+                        </div>
+                        <div className="col-span-6 sm:col-span-3 hidden sm:flex">
+                          <KPICell current={entry.realized.quotes} target={entry.goals?.target_quotes || 0} icon={FileText} />
+                        </div>
+                        <div className="col-span-6 sm:col-span-3 hidden sm:flex">
+                          <KPICell current={entry.realized.orders} target={entry.goals?.target_orders || 0} icon={ShoppingBag} />
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          /* --- VIEW FOR SELLER: WEEKLY TIMESHEET --- */
+          <>
+            {/* Scoreboard Summary */}
+            <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl p-6 text-white shadow-lg mb-8">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
+                <div>
+                  <h2 className="text-2xl font-bold capitalize">{monthName}</h2>
+                  <p className="text-blue-100 text-sm">Resumo Mensal</p>
+                </div>
+                <div className="flex gap-3">
+                  <div className="bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2">
+                    <Phone className="h-4 w-4" />
+                    {currentUserEntry?.realized.contacts}/{currentUserEntry?.goals?.target_contacts || '-'}
+                  </div>
+                  <div className="bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    {currentUserEntry?.realized.quotes}/{currentUserEntry?.goals?.target_quotes || '-'}
+                  </div>
+                  <div className="bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2">
+                    <ShoppingBag className="h-4 w-4" />
+                    {currentUserEntry?.realized.orders}/{currentUserEntry?.goals?.target_orders || '-'}
+                  </div>
+                </div>
+              </div>
+              {/* Master Progress Bar (Average of all 3?) -> Just showing one for visual flair or sum */}
+              <div className="w-full bg-black/20 rounded-full h-2">
+                <div className="bg-white h-2 rounded-full" style={{ width: '0%' }}></div> 
+              </div>
+            </div>
+
+            {/* Week Navigation */}
+            <div className="flex items-center justify-between mb-4">
+              <button onClick={() => changeWeek(-1)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-600 dark:text-gray-400">
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <div className="font-semibold text-gray-700 dark:text-gray-200">
+                {weekRangeStr}
+              </div>
+              <button onClick={() => changeWeek(1)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-600 dark:text-gray-400">
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Weekly Grid/Accordion */}
+            <div className="space-y-3">
+              {getWeekDays(currentWeekStart).map((day) => {
+                const dateStr = day.toISOString().split('T')[0]
+                const log = weeklyLogs.find(l => l.entry_date === dateStr)
+                const isExpanded = expandedDay === dateStr
+                const isFuture = day > new Date()
+                const isToday = dateStr === new Date().toISOString().split('T')[0]
+                const hasData = log && (log.contacts_done > 0 || log.quotes_done > 0 || log.orders_done > 0)
+
+                return (
+                  <div 
+                    key={dateStr}
+                    className={`
+                      bg-white dark:bg-gray-800 rounded-xl border transition-all duration-300 overflow-hidden
+                      ${isExpanded ? 'ring-2 ring-blue-500 border-transparent shadow-md' : 'border-gray-200 dark:border-gray-700 shadow-sm'}
+                      ${isFuture ? 'opacity-60 grayscale' : ''}
+                    `}
+                  >
+                    {/* Card Header (Always Visible) */}
+                    <button
+                      onClick={() => handleDayClick(dateStr, log)}
+                      disabled={isFuture}
+                      className="w-full flex items-center justify-between p-4 cursor-pointer disabled:cursor-not-allowed"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className={`
+                          w-12 h-12 rounded-xl flex flex-col items-center justify-center text-sm font-bold
+                          ${isToday ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}
+                        `}>
+                          <span>{day.getDate()}</span>
+                          <span className="text-[10px] font-normal uppercase">{day.toLocaleString('pt-BR', { weekday: 'short' }).slice(0, 3)}</span>
+                        </div>
+                        
+                        <div className="text-left">
+                          <h3 className="font-semibold text-gray-900 dark:text-white capitalize">
+                            {day.toLocaleString('pt-BR', { weekday: 'long' })}
+                          </h3>
+                          <div className="flex gap-2 text-xs text-gray-500 dark:text-gray-400">
+                            {hasData ? (
+                              <span className="text-green-600 dark:text-green-400 flex items-center gap-1">
+                                <CheckCircle2 className="h-3 w-3" /> Registrado
+                              </span>
+                            ) : (
+                              <span>Sem registros</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        {isFuture ? <Lock className="h-5 w-5 text-gray-400" /> : 
+                         hasData ? <div className="text-sm font-medium text-gray-900 dark:text-white">{log?.contacts_done} • {log?.quotes_done} • {log?.orders_done}</div> :
+                         <Plus className="h-5 w-5 text-gray-400" />
+                        }
+                      </div>
+                    </button>
+
+                    {/* Expandable Input Area */}
+                    {isExpanded && (
+                      <div className="p-4 pt-0 border-t border-gray-100 dark:border-gray-700 mt-2 bg-gray-50/50 dark:bg-gray-800/50">
+                        <div className="grid grid-cols-3 gap-3 py-4">
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                              <Phone className="h-3 w-3" /> Contatos
+                            </label>
+                            <input 
+                              type="number" min="0" 
+                              value={dayForm.contacts}
+                              onChange={(e) => setDayForm({...dayForm, contacts: parseInt(e.target.value) || 0})}
+                              className="w-full p-2 border border-gray-200 dark:border-gray-600 rounded-lg text-center font-bold text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 outline-none"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                              <FileText className="h-3 w-3" /> Orçamentos
+                            </label>
+                            <input 
+                              type="number" min="0" 
+                              value={dayForm.quotes}
+                              onChange={(e) => setDayForm({...dayForm, quotes: parseInt(e.target.value) || 0})}
+                              className="w-full p-2 border border-gray-200 dark:border-gray-600 rounded-lg text-center font-bold text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 outline-none"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                              <ShoppingBag className="h-3 w-3" /> Pedidos
+                            </label>
+                            <input 
+                              type="number" min="0" 
+                              value={dayForm.orders}
+                              onChange={(e) => setDayForm({...dayForm, orders: parseInt(e.target.value) || 0})}
+                              className="w-full p-2 border border-gray-200 dark:border-gray-600 rounded-lg text-center font-bold text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 outline-none"
+                            />
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => handleSaveDay(dateStr)}
+                          disabled={!!savingDay}
+                          className="w-full py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                        >
+                          {savingDay === dateStr ? 'Salvando...' : <><Save className="h-4 w-4" /> Salvar Dia</>}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </>
+        )}
+      </main>
     </div>
   )
 }

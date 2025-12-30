@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { supabase, isSupabaseConfigured } from './supabase'
 
 export interface MonthlyGoal {
   id: string
@@ -30,7 +30,9 @@ export interface UserPerformance {
 }
 
 export async function getMonthlyGoal(userId: string, month: number, year: number) {
-  const { data, error } = await supabase
+  if (!isSupabaseConfigured || !supabase) return null
+
+  const { data, error } = await (supabase as any)
     .from('monthly_goals')
     .select('*')
     .eq('user_id', userId)
@@ -46,12 +48,14 @@ export async function getMonthlyGoal(userId: string, month: number, year: number
 }
 
 export async function getPerformanceLogs(userId: string, month: number, year: number) {
+  if (!isSupabaseConfigured || !supabase) return []
+
   // Construct date range for the month
   const startDate = `${year}-${String(month).padStart(2, '0')}-01`
   const lastDay = new Date(year, month, 0).getDate()
   const endDate = `${year}-${String(month).padStart(2, '0')}-${lastDay}`
 
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from('performance_logs')
     .select('*')
     .eq('user_id', userId)
@@ -71,7 +75,9 @@ export async function addPerformanceLog(
   userId: string,
   data: { contacts: number; quotes: number; orders: number; notes?: string; date?: string }
 ) {
-  const { error } = await supabase.from('performance_logs').insert({
+  if (!isSupabaseConfigured || !supabase) return { success: false, error: 'Supabase não configurado' }
+
+  const { error } = await (supabase as any).from('performance_logs').insert({
     user_id: userId,
     contacts_done: data.contacts,
     quotes_done: data.quotes,
@@ -89,6 +95,13 @@ export async function addPerformanceLog(
 }
 
 export async function getUserPerformance(userId: string, month: number, year: number): Promise<UserPerformance> {
+  if (!isSupabaseConfigured || !supabase) {
+    return {
+      goals: null,
+      realized: { contacts: 0, quotes: 0, orders: 0 }
+    }
+  }
+
   const [goal, logs] = await Promise.all([
     getMonthlyGoal(userId, month, year),
     getPerformanceLogs(userId, month, year)
@@ -116,12 +129,14 @@ export async function setMonthlyGoal(
   year: number,
   targets: { contacts: number; quotes: number; orders: number }
 ) {
+  if (!isSupabaseConfigured || !supabase) return { success: false, error: 'Supabase não configurado' }
+
   // Check if goal exists to update or insert
   const existing = await getMonthlyGoal(userId, month, year)
 
   let error
   if (existing) {
-    const { error: updateError } = await supabase
+    const { error: updateError } = await (supabase as any)
       .from('monthly_goals')
       .update({
         target_contacts: targets.contacts,
@@ -132,7 +147,7 @@ export async function setMonthlyGoal(
       .eq('id', existing.id)
     error = updateError
   } else {
-    const { error: insertError } = await supabase
+    const { error: insertError } = await (supabase as any)
       .from('monthly_goals')
       .insert({
         user_id: userId,

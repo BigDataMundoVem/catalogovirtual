@@ -169,11 +169,11 @@ export async function getSession(): Promise<Session | null> {
 }
 
 // Get current user
-export async function getCurrentUser(): Promise<User | { email: string } | null> {
+export async function getCurrentUser(): Promise<User | { id: string; email: string } | null> {
   if (!isSupabaseConfigured) {
     if (typeof window === 'undefined') return null
     if (localStorage.getItem(AUTH_KEY) === 'true') {
-      return { email: 'local-user' }
+      return { id: 'local-user', email: 'local-user' }
     }
     return null
   }

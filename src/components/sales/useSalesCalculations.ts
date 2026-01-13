@@ -103,3 +103,4 @@ export function useSalesCalculations(users: UserEntry[]) {
   }, [users, diasRestantes, semanasRestantes])
 }
 
+

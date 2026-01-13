@@ -246,19 +246,19 @@ export async function createUser(email: string, password: string, role: UserRole
   // Add role to user_roles table
   if (data.user) {
     // 1. Define Role
-    await (supabase as any).from('user_roles').insert({
+    await (supabase as any).from('user_roles').upsert({
       user_id: data.user.id,
       role: role,
-    })
+    }, { onConflict: 'user_id' })
 
-    // 2. Create Public Profile
-    await (supabase as any).from('profiles').insert({
+    // 2. Create/Update Public Profile (upsert para evitar conflito com trigger)
+    await (supabase as any).from('profiles').upsert({
       id: data.user.id,
       email: email,
       full_name: fullName || email.split('@')[0], // Usa o nome fornecido ou parte do email
       role: role,
       is_sales_active: isSalesActive
-    })
+    }, { onConflict: 'id' })
   }
 
   return { success: true }
@@ -404,11 +404,13 @@ export async function updateUserProfile(
       if (roleError) throw roleError
     }
 
-    if (params.fullName !== undefined || params.isSalesActive !== undefined) {
-      const payload: any = {}
-      if (params.fullName !== undefined) payload.full_name = params.fullName
-      if (params.isSalesActive !== undefined) payload.is_sales_active = params.isSalesActive
+    // Atualiza campos no profiles
+    const payload: any = {}
+    if (params.role !== undefined) payload.role = params.role
+    if (params.fullName !== undefined) payload.full_name = params.fullName
+    if (params.isSalesActive !== undefined) payload.is_sales_active = params.isSalesActive
 
+    if (Object.keys(payload).length > 0) {
       const { error: profileError } = await (supabase as any)
         .from('profiles')
         .update(payload)

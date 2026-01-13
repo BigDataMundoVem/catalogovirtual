@@ -32,19 +32,28 @@ export interface UserPerformance {
 export async function getMonthlyGoal(userId: string, month: number, year: number) {
   if (!isSupabaseConfigured || !supabase) return null
 
-  const { data, error } = await (supabase as any)
-    .from('monthly_goals')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('month', month)
-    .eq('year', year)
-    .single()
+  try {
+    const { data, error } = await (supabase as any)
+      .from('monthly_goals')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('month', month)
+      .eq('year', year)
+      .single()
 
-  if (error && error.code !== 'PGRST116') { // PGRST116 is "Row not found"
-    console.error('Error fetching goals:', error)
+    // Ignorar erros comuns: PGRST116 (row not found), 406 (table not found/not acceptable)
+    if (error && error.code !== 'PGRST116' && error.code !== '42P01') {
+      // Só logar se não for erro de tabela inexistente
+      if (!error.message?.includes('406') && !error.message?.includes('Not Acceptable')) {
+        console.error('Error fetching goals:', error)
+      }
+    }
+
+    return data as MonthlyGoal | null
+  } catch (e) {
+    // Silenciar erros de rede/tabela inexistente
+    return null
   }
-
-  return data as MonthlyGoal | null
 }
 
 export async function getPerformanceLogs(userId: string, month: number, year: number) {

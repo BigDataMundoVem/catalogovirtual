@@ -982,7 +982,7 @@ export default function AdminPage() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4">
             <div className="fixed inset-0 bg-black/50" onClick={closeProductModal} />
-            <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+            <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto" style={{ paddingBottom: isMobile ? '80px' : '24px' }}>
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{editingProduct ? 'Editar Produto' : 'Novo Produto'}</h2>
                 <button onClick={closeProductModal} className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg"><X className="h-5 w-5" /></button>
@@ -1052,6 +1052,19 @@ export default function AdminPage() {
                   <button type="submit" className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"><Save className="h-4 w-4" /><span>Salvar</span></button>
                 </div>
               </form>
+              
+              {/* Botão Voltar fixo no mobile */}
+              {isMobile && (
+                <div className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 md:hidden">
+                  <button
+                    onClick={closeProductModal}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 font-medium"
+                  >
+                    <ArrowLeft className="h-5 w-5" />
+                    <span>Voltar</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1062,7 +1075,7 @@ export default function AdminPage() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4">
             <div className="fixed inset-0 bg-black/50" onClick={closeCategoryModal} />
-            <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md p-6">
+            <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md p-6" style={{ paddingBottom: isMobile ? '80px' : '24px' }}>
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{editingCategory ? 'Editar Família' : 'Nova Família'}</h2>
                 <button onClick={closeCategoryModal} className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg"><X className="h-5 w-5" /></button>
@@ -1074,6 +1087,19 @@ export default function AdminPage() {
                   <button type="submit" className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"><Save className="h-4 w-4" /><span>Salvar</span></button>
                 </div>
               </form>
+              
+              {/* Botão Voltar fixo no mobile */}
+              {isMobile && (
+                <div className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 md:hidden">
+                  <button
+                    onClick={closeCategoryModal}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 font-medium"
+                  >
+                    <ArrowLeft className="h-5 w-5" />
+                    <span>Voltar</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1173,6 +1199,12 @@ export default function AdminPage() {
                 <button onClick={() => setEditUserModal({ open: false, user: null })} className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg">
                   <X className="h-5 w-5" />
                 </button>
+              </div>
+
+              {/* Mostrar email do usuário sendo editado */}
+              <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                <p className="text-xs text-gray-500 dark:text-gray-400">Email</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">{editUserModal.user.email}</p>
               </div>
 
               <form onSubmit={handleSaveEditUser} className="space-y-4">

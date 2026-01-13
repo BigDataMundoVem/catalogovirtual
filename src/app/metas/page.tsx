@@ -22,6 +22,8 @@ export default function GoalsPage() {
   // Data State
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [currentUserEntry, setCurrentUserEntry] = useState<LeaderboardEntry | null>(null)
+  const [userLastWeekData, setUserLastWeekData] = useState<Record<string, { contacts: number; quotes: number; orders: number }>>({})
+  const [userTodayData, setUserTodayData] = useState<Record<string, { contacts: number; quotes: number; orders: number }>>({})
   
   // Weekly Timesheet State
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(getMonday(new Date()))
@@ -33,6 +35,7 @@ export default function GoalsPage() {
     orders: 0
   })
   const [savingDay, setSavingDay] = useState<string | null>(null)
+  const [lastWeekSummary, setLastWeekSummary] = useState<{ contacts: number; quotes: number; orders: number } | null>(null)
 
   function getMonday(d: Date) {
     d = new Date(d);
@@ -86,6 +89,7 @@ export default function GoalsPage() {
     if (userId) {
       if (userIsAdmin) {
         loadLeaderboard()
+        loadLastWeekSummary(userId) // Also load last week summary for admin
       } else {
         loadWeeklyData()
       }
@@ -97,10 +101,63 @@ export default function GoalsPage() {
     try {
       if (isLocal) {
         // Mock data
-        setLeaderboard([]) 
+        setLeaderboard([])
+        setUserLastWeekData({})
+        setUserTodayData({})
       } else {
         const data = await getLeaderboardData(currentDate.getMonth() + 1, currentDate.getFullYear())
         setLeaderboard(data)
+        
+        // Load last week data for each user
+        const lastWeekDataMap: Record<string, { contacts: number; quotes: number; orders: number }> = {}
+        
+        // Calculate last week dates
+        const today = new Date()
+        const currentDay = today.getDay()
+        let daysToSubtract = currentDay === 0 ? 6 : currentDay + 6
+        const lastWeekMonday = new Date(today)
+        lastWeekMonday.setDate(today.getDate() - daysToSubtract)
+        lastWeekMonday.setHours(0, 0, 0, 0)
+        const lastWeekFriday = new Date(lastWeekMonday)
+        lastWeekFriday.setDate(lastWeekMonday.getDate() + 4)
+        lastWeekFriday.setHours(23, 59, 59, 999)
+        const startStr = lastWeekMonday.toISOString().split('T')[0]
+        const endStr = lastWeekFriday.toISOString().split('T')[0]
+        
+        // Load last week data and today data for each user in parallel
+        const todayDataMap: Record<string, { contacts: number; quotes: number; orders: number }> = {}
+        const todayStr = new Date().toISOString().split('T')[0]
+        
+        await Promise.all(
+          data.map(async (entry) => {
+            try {
+              // Load last week data
+              const logs = await getWeeklyLogs(entry.user.id, startStr, endStr)
+              const summary = logs.reduce((acc, log) => ({
+                contacts: acc.contacts + (log.contacts_done || 0),
+                quotes: acc.quotes + (log.quotes_done || 0),
+                orders: acc.orders + (log.orders_done || 0)
+              }), { contacts: 0, quotes: 0, orders: 0 })
+              lastWeekDataMap[entry.user.id] = summary
+              
+              // Load today data
+              const todayLogs = await getWeeklyLogs(entry.user.id, todayStr, todayStr)
+              const todaySummary = todayLogs.reduce((acc, log) => ({
+                contacts: acc.contacts + (log.contacts_done || 0),
+                quotes: acc.quotes + (log.quotes_done || 0),
+                orders: acc.orders + (log.orders_done || 0)
+              }), { contacts: 0, quotes: 0, orders: 0 })
+              todayDataMap[entry.user.id] = todaySummary
+            } catch (error) {
+              console.error(`Error loading data for user ${entry.user.id}:`, error)
+              lastWeekDataMap[entry.user.id] = { contacts: 0, quotes: 0, orders: 0 }
+              todayDataMap[entry.user.id] = { contacts: 0, quotes: 0, orders: 0 }
+            }
+          })
+        )
+        
+        setUserLastWeekData(lastWeekDataMap)
+        setUserTodayData(todayDataMap)
       }
     } catch (error) {
       console.error('Error loading leaderboard:', error)
@@ -128,14 +185,57 @@ export default function GoalsPage() {
       
       if (isLocal) {
         setWeeklyLogs([])
+        setLastWeekSummary({ contacts: 0, quotes: 0, orders: 0 })
       } else {
         const logs = await getWeeklyLogs(userId, startStr, endStr)
         setWeeklyLogs(logs)
+        
+        // Load last week summary
+        await loadLastWeekSummary(userId)
       }
     } catch (error) {
       console.error('Error loading weekly data:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadLastWeekSummary = async (userId: string) => {
+    try {
+      // Calculate last week (Monday to Friday)
+      const today = new Date()
+      const currentDay = today.getDay() // 0 = Sunday, 1 = Monday, etc.
+      
+      // Calculate days to subtract to get to last Monday
+      // If today is Monday (1), we want the previous Monday, so subtract 7 days
+      // If today is Sunday (0), we want the Monday before last, so subtract 6 days
+      let daysToSubtract = currentDay === 0 ? 6 : currentDay + 6
+      
+      const lastWeekMonday = new Date(today)
+      lastWeekMonday.setDate(today.getDate() - daysToSubtract)
+      lastWeekMonday.setHours(0, 0, 0, 0)
+      
+      const lastWeekFriday = new Date(lastWeekMonday)
+      lastWeekFriday.setDate(lastWeekMonday.getDate() + 4) // Friday is 4 days after Monday
+      lastWeekFriday.setHours(23, 59, 59, 999)
+      
+      const startStr = lastWeekMonday.toISOString().split('T')[0]
+      const endStr = lastWeekFriday.toISOString().split('T')[0]
+      
+      if (isLocal) {
+        setLastWeekSummary({ contacts: 0, quotes: 0, orders: 0 })
+      } else {
+        const logs = await getWeeklyLogs(userId, startStr, endStr)
+        const summary = logs.reduce((acc, log) => ({
+          contacts: acc.contacts + (log.contacts_done || 0),
+          quotes: acc.quotes + (log.quotes_done || 0),
+          orders: acc.orders + (log.orders_done || 0)
+        }), { contacts: 0, quotes: 0, orders: 0 })
+        setLastWeekSummary(summary)
+      }
+    } catch (error) {
+      console.error('Error loading last week summary:', error)
+      setLastWeekSummary({ contacts: 0, quotes: 0, orders: 0 })
     }
   }
 
@@ -215,7 +315,7 @@ export default function GoalsPage() {
   }
 
   // Helper for Table Cell
-  const KPICell = ({ current, target, icon: Icon }: { current: number, target: number, icon: any }) => {
+  const KPICell = ({ current, target, icon: Icon, lastWeek, today }: { current: number, target: number, icon: any, lastWeek?: number, today?: number }) => {
     const { percent, color } = calculateProgress(current, target)
     return (
       <div className="flex flex-col gap-1 w-full max-w-[140px]">
@@ -225,6 +325,18 @@ export default function GoalsPage() {
             <span className="font-medium text-gray-900 dark:text-white">{current}</span>
           </div>
           <span className="text-xs text-gray-400">/{target || '-'}</span>
+        </div>
+        <div className="flex flex-col gap-0.5">
+          {today !== undefined && (
+            <div className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+              Hoje: {today}
+            </div>
+          )}
+          {lastWeek !== undefined && (
+            <div className="text-xs text-green-600 dark:text-green-400 font-medium">
+              Semana: {lastWeek}
+            </div>
+          )}
         </div>
         <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
           <div 
@@ -278,7 +390,7 @@ export default function GoalsPage() {
         {userIsAdmin ? (
           <>
             {/* Month Selector */}
-            <div className="flex items-center justify-center mb-6 sm:mb-8">
+            <div className="flex items-center justify-center mb-4 sm:mb-6">
               <div className="flex items-center bg-white dark:bg-gray-800 p-1 sm:p-1.5 rounded-lg sm:rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 w-full sm:w-auto max-w-sm">
                 <button 
                   onClick={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() - 1)))}
@@ -299,49 +411,85 @@ export default function GoalsPage() {
               </div>
             </div>
 
+            {/* Last Week Summary for Admin */}
+            {lastWeekSummary && userId && (
+              <div className="bg-gradient-to-r from-green-600 to-green-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 text-white shadow-lg mb-6 sm:mb-8">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+                  <div>
+                    <h2 className="text-lg sm:text-xl font-bold">Minha Última Semana</h2>
+                    <p className="text-green-100 text-xs sm:text-sm">Resumo Semanal</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
+                    <div className="bg-white/10 backdrop-blur-sm px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1.5 sm:gap-2 flex-1 sm:flex-initial justify-center sm:justify-start">
+                      <Phone className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                      {lastWeekSummary.contacts}
+                    </div>
+                    <div className="bg-white/10 backdrop-blur-sm px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1.5 sm:gap-2 flex-1 sm:flex-initial justify-center sm:justify-start">
+                      <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                      {lastWeekSummary.quotes}
+                    </div>
+                    <div className="bg-white/10 backdrop-blur-sm px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1.5 sm:gap-2 flex-1 sm:flex-initial justify-center sm:justify-start">
+                      <ShoppingBag className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                      {lastWeekSummary.orders}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {loading ? (
               <div className="flex justify-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
               </div>
             ) : isMobile ? (
-              // Versão Mobile: Cards
-              <div className="space-y-3">
+              // Versão Mobile: Cards Compactos
+              <div className="space-y-2">
                 {leaderboard.length === 0 ? (
-                  <div className="p-8 text-center text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+                  <div className="p-6 text-center text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
                     Nenhum registro encontrado para este mês.
                   </div>
                 ) : (
                   leaderboard.map((entry) => (
-                    <div key={entry.user.id} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="h-12 w-12 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center flex-shrink-0 text-gray-500">
+                    <div key={entry.user.id} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm p-3">
+                      {/* Header do Card - Nome e Avatar */}
+                      <div className="flex items-center gap-2 mb-2 pb-2 border-b border-gray-100 dark:border-gray-700">
+                        <div className="h-8 w-8 rounded-full bg-blue-600 dark:bg-blue-500 flex items-center justify-center flex-shrink-0 text-white text-sm font-semibold">
                           {entry.user.avatar_url ? (
                             <img src={entry.user.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
                           ) : (
-                            <span className="text-base font-semibold">{entry.user.full_name?.charAt(0) || 'U'}</span>
+                            entry.user.full_name?.charAt(0) || 'U'
                           )}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="font-semibold text-gray-900 dark:text-white truncate text-base">
+                          <p className="font-semibold text-gray-900 dark:text-white truncate text-sm">
                             {entry.user.full_name}
                           </p>
-                          <p className="text-xs text-gray-500">{entry.user.role}</p>
+                          <p className="text-[10px] text-gray-500">{entry.user.role}</p>
                         </div>
                       </div>
-                      <div className="space-y-3">
-                        <div>
-                          <div className="flex items-center justify-between mb-1">
-                            <div className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400">
-                              <Phone className="h-4 w-4" />
-                              <span className="font-medium">Contatos</span>
-                            </div>
-                            <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                              {entry.realized.contacts}/{entry.goals?.target_contacts || '-'}
-                            </span>
+                      
+                      {/* KPIs em Grid Compacto */}
+                      <div className="grid grid-cols-3 gap-2">
+                        {/* Contatos */}
+                        <div className="text-center">
+                          <div className="flex items-center justify-center gap-1 text-gray-500 dark:text-gray-400 mb-0.5">
+                            <Phone className="h-3 w-3" />
+                            <span className="text-[10px] font-medium">Contatos</span>
                           </div>
-                          <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+                          <p className="text-sm font-bold text-gray-900 dark:text-white">
+                            {entry.realized.contacts}/{entry.goals?.target_contacts || '-'}
+                          </p>
+                          <div className="flex flex-col items-center text-[10px] leading-tight">
+                            {userTodayData[entry.user.id] && (
+                              <span className="text-blue-600 dark:text-blue-400">Hoje: {userTodayData[entry.user.id].contacts}</span>
+                            )}
+                            {userLastWeekData[entry.user.id] && (
+                              <span className="text-green-600 dark:text-green-400">Semana: {userLastWeekData[entry.user.id].contacts}</span>
+                            )}
+                          </div>
+                          <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1 mt-1 overflow-hidden">
                             <div 
-                              className={`h-full rounded-full transition-all duration-500 ${
+                              className={`h-full rounded-full ${
                                 (entry.realized.contacts / (entry.goals?.target_contacts || 1)) * 100 >= 100 ? 'bg-green-500' :
                                 (entry.realized.contacts / (entry.goals?.target_contacts || 1)) * 100 >= 80 ? 'bg-blue-500' :
                                 (entry.realized.contacts / (entry.goals?.target_contacts || 1)) * 100 >= 40 ? 'bg-yellow-500' : 'bg-red-500'
@@ -350,19 +498,27 @@ export default function GoalsPage() {
                             />
                           </div>
                         </div>
-                        <div>
-                          <div className="flex items-center justify-between mb-1">
-                            <div className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400">
-                              <FileText className="h-4 w-4" />
-                              <span className="font-medium">Orçamentos</span>
-                            </div>
-                            <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                              {entry.realized.quotes}/{entry.goals?.target_quotes || '-'}
-                            </span>
+                        
+                        {/* Orçamentos */}
+                        <div className="text-center">
+                          <div className="flex items-center justify-center gap-1 text-gray-500 dark:text-gray-400 mb-0.5">
+                            <FileText className="h-3 w-3" />
+                            <span className="text-[10px] font-medium">Orçamentos</span>
                           </div>
-                          <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+                          <p className="text-sm font-bold text-gray-900 dark:text-white">
+                            {entry.realized.quotes}/{entry.goals?.target_quotes || '-'}
+                          </p>
+                          <div className="flex flex-col items-center text-[10px] leading-tight">
+                            {userTodayData[entry.user.id] && (
+                              <span className="text-blue-600 dark:text-blue-400">Hoje: {userTodayData[entry.user.id].quotes}</span>
+                            )}
+                            {userLastWeekData[entry.user.id] && (
+                              <span className="text-green-600 dark:text-green-400">Semana: {userLastWeekData[entry.user.id].quotes}</span>
+                            )}
+                          </div>
+                          <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1 mt-1 overflow-hidden">
                             <div 
-                              className={`h-full rounded-full transition-all duration-500 ${
+                              className={`h-full rounded-full ${
                                 (entry.realized.quotes / (entry.goals?.target_quotes || 1)) * 100 >= 100 ? 'bg-green-500' :
                                 (entry.realized.quotes / (entry.goals?.target_quotes || 1)) * 100 >= 80 ? 'bg-blue-500' :
                                 (entry.realized.quotes / (entry.goals?.target_quotes || 1)) * 100 >= 40 ? 'bg-yellow-500' : 'bg-red-500'
@@ -371,19 +527,27 @@ export default function GoalsPage() {
                             />
                           </div>
                         </div>
-                        <div>
-                          <div className="flex items-center justify-between mb-1">
-                            <div className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400">
-                              <ShoppingBag className="h-4 w-4" />
-                              <span className="font-medium">Pedidos</span>
-                            </div>
-                            <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                              {entry.realized.orders}/{entry.goals?.target_orders || '-'}
-                            </span>
+                        
+                        {/* Pedidos */}
+                        <div className="text-center">
+                          <div className="flex items-center justify-center gap-1 text-gray-500 dark:text-gray-400 mb-0.5">
+                            <ShoppingBag className="h-3 w-3" />
+                            <span className="text-[10px] font-medium">Pedidos</span>
                           </div>
-                          <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+                          <p className="text-sm font-bold text-gray-900 dark:text-white">
+                            {entry.realized.orders}/{entry.goals?.target_orders || '-'}
+                          </p>
+                          <div className="flex flex-col items-center text-[10px] leading-tight">
+                            {userTodayData[entry.user.id] && (
+                              <span className="text-blue-600 dark:text-blue-400">Hoje: {userTodayData[entry.user.id].orders}</span>
+                            )}
+                            {userLastWeekData[entry.user.id] && (
+                              <span className="text-green-600 dark:text-green-400">Semana: {userLastWeekData[entry.user.id].orders}</span>
+                            )}
+                          </div>
+                          <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1 mt-1 overflow-hidden">
                             <div 
-                              className={`h-full rounded-full transition-all duration-500 ${
+                              className={`h-full rounded-full ${
                                 (entry.realized.orders / (entry.goals?.target_orders || 1)) * 100 >= 100 ? 'bg-green-500' :
                                 (entry.realized.orders / (entry.goals?.target_orders || 1)) * 100 >= 80 ? 'bg-blue-500' :
                                 (entry.realized.orders / (entry.goals?.target_orders || 1)) * 100 >= 40 ? 'bg-yellow-500' : 'bg-red-500'
@@ -415,7 +579,7 @@ export default function GoalsPage() {
                     leaderboard.map((entry) => (
                       <div key={entry.user.id} className="grid grid-cols-12 gap-4 px-4 sm:px-6 py-4 items-center hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
                         <div className="col-span-4 sm:col-span-3 flex items-center gap-3 overflow-hidden">
-                          <div className="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center flex-shrink-0 text-gray-500">
+                          <div className="h-10 w-10 rounded-full bg-blue-600 dark:bg-blue-500 flex items-center justify-center flex-shrink-0 text-white">
                             {entry.user.avatar_url ? (
                               <img src={entry.user.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
                             ) : (
@@ -430,13 +594,31 @@ export default function GoalsPage() {
                           </div>
                         </div>
                         <div className="col-span-8 sm:col-span-3 flex justify-center sm:justify-start">     
-                          <KPICell current={entry.realized.contacts} target={entry.goals?.target_contacts || 0} icon={Phone} />
+                          <KPICell 
+                            current={entry.realized.contacts} 
+                            target={entry.goals?.target_contacts || 0} 
+                            icon={Phone}
+                            today={userTodayData[entry.user.id]?.contacts}
+                            lastWeek={userLastWeekData[entry.user.id]?.contacts}
+                          />
                         </div>
                         <div className="col-span-6 sm:col-span-3 hidden sm:flex">
-                          <KPICell current={entry.realized.quotes} target={entry.goals?.target_quotes || 0} icon={FileText} />
+                          <KPICell 
+                            current={entry.realized.quotes} 
+                            target={entry.goals?.target_quotes || 0} 
+                            icon={FileText}
+                            today={userTodayData[entry.user.id]?.quotes}
+                            lastWeek={userLastWeekData[entry.user.id]?.quotes}
+                          />
                         </div>
                         <div className="col-span-6 sm:col-span-3 hidden sm:flex">
-                          <KPICell current={entry.realized.orders} target={entry.goals?.target_orders || 0} icon={ShoppingBag} />
+                          <KPICell 
+                            current={entry.realized.orders} 
+                            target={entry.goals?.target_orders || 0} 
+                            icon={ShoppingBag}
+                            today={userTodayData[entry.user.id]?.orders}
+                            lastWeek={userLastWeekData[entry.user.id]?.orders}
+                          />
                         </div>
                       </div>
                     ))
@@ -449,7 +631,7 @@ export default function GoalsPage() {
           /* --- VIEW FOR SELLER: WEEKLY TIMESHEET --- */
           <>
             {/* Scoreboard Summary */}
-            <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 text-white shadow-lg mb-6 sm:mb-8">
+            <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 text-white shadow-lg mb-4 sm:mb-6">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
                 <div>
                   <h2 className="text-xl sm:text-2xl font-bold capitalize">{monthName}</h2>
@@ -475,6 +657,32 @@ export default function GoalsPage() {
                 <div className="bg-white h-2 rounded-full" style={{ width: '0%' }}></div> 
               </div>
             </div>
+
+            {/* Last Week Summary */}
+            {lastWeekSummary && (
+              <div className="bg-gradient-to-r from-green-600 to-green-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 text-white shadow-lg mb-6 sm:mb-8">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+                  <div>
+                    <h2 className="text-lg sm:text-xl font-bold">Última Semana</h2>
+                    <p className="text-green-100 text-xs sm:text-sm">Resumo Semanal</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
+                    <div className="bg-white/10 backdrop-blur-sm px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1.5 sm:gap-2 flex-1 sm:flex-initial justify-center sm:justify-start">
+                      <Phone className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                      {lastWeekSummary.contacts}
+                    </div>
+                    <div className="bg-white/10 backdrop-blur-sm px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1.5 sm:gap-2 flex-1 sm:flex-initial justify-center sm:justify-start">
+                      <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                      {lastWeekSummary.quotes}
+                    </div>
+                    <div className="bg-white/10 backdrop-blur-sm px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1.5 sm:gap-2 flex-1 sm:flex-initial justify-center sm:justify-start">
+                      <ShoppingBag className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                      {lastWeekSummary.orders}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Week Navigation */}
             <div className="flex items-center justify-between mb-3 sm:mb-4">

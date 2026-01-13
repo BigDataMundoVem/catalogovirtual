@@ -93,3 +93,4 @@ CREATE TRIGGER trigger_update_sales_monthly_updated_at
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.sales_monthly_data TO authenticated;
 GRANT USAGE ON SCHEMA public TO authenticated;
 
+

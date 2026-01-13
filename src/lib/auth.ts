@@ -14,6 +14,7 @@ const DEFAULT_VIEWER_PASS = 'viewer123'
 const FALLBACK_ADMIN_EMAILS = ['bigdata3@mundovem.com.be']
 
 export type UserRole = 'admin' | 'viewer' | 'blocked'
+export type SalesChannel = 'consumo' | 'revenda' | 'cozinhas' | 'all'
 
 interface LocalCredentials {
   username: string
@@ -207,6 +208,25 @@ export async function isSalesActive(): Promise<boolean> {
   return data?.is_sales_active ?? true 
 }
 
+// Get current user's sales channel
+export async function getCurrentUserChannel(): Promise<SalesChannel> {
+  const user = await getCurrentUser()
+  if (!user || !('id' in user)) return 'all'
+
+  if (!isSupabaseConfigured) return 'all'
+
+  const { data } = await (supabase as any)
+    .from('profiles')
+    .select('sales_channel, role')
+    .eq('id', user.id)
+    .single()
+
+  // Admins sempre veem todos os canais
+  if (data?.role === 'admin') return 'all'
+  
+  return (data?.sales_channel || 'all') as SalesChannel
+}
+
 // Get session
 export async function getSession(): Promise<Session | null> {
   if (!isSupabaseConfigured) return null
@@ -229,7 +249,14 @@ export async function getCurrentUser(): Promise<User | { id: string; email: stri
 }
 
 // Create user (admin only)
-export async function createUser(email: string, password: string, role: UserRole = 'viewer', fullName: string = '', isSalesActive: boolean = true): Promise<{ success: boolean; error?: string }> {
+export async function createUser(
+  email: string, 
+  password: string, 
+  role: UserRole = 'viewer', 
+  fullName: string = '', 
+  isSalesActive: boolean = true,
+  salesChannel: SalesChannel = 'all'
+): Promise<{ success: boolean; error?: string }> {
   if (!isSupabaseConfigured) {
     return { success: false, error: 'Supabase não configurado. Configure para criar múltiplos usuários.' }
   }
@@ -257,7 +284,8 @@ export async function createUser(email: string, password: string, role: UserRole
       email: email,
       full_name: fullName || email.split('@')[0], // Usa o nome fornecido ou parte do email
       role: role,
-      is_sales_active: isSalesActive
+      is_sales_active: isSalesActive,
+      sales_channel: salesChannel
     }, { onConflict: 'id' })
   }
 
@@ -304,19 +332,19 @@ export async function getLoginHistory(limit: number = 50): Promise<LocalLoginHis
 }
 
 // Get all users (admin only)
-export async function getUsers(): Promise<{ id: string; email: string; role: 'admin' | 'viewer' | 'blocked'; full_name?: string | null; is_sales_active?: boolean | null }[]> {
+export async function getUsers(): Promise<{ id: string; email: string; role: 'admin' | 'viewer' | 'blocked'; full_name?: string | null; is_sales_active?: boolean | null; sales_channel?: SalesChannel | null }[]> {
   if (!isSupabaseConfigured) {
     // Local mode mock
     return [
-      { id: '1', email: DEFAULT_ADMIN_USER, role: 'admin' as const, full_name: null, is_sales_active: true },
-      { id: '2', email: DEFAULT_VIEWER_USER, role: 'viewer' as const, full_name: null, is_sales_active: true }
+      { id: '1', email: DEFAULT_ADMIN_USER, role: 'admin' as const, full_name: null, is_sales_active: true, sales_channel: 'all' as const },
+      { id: '2', email: DEFAULT_VIEWER_USER, role: 'viewer' as const, full_name: null, is_sales_active: true, sales_channel: 'all' as const }
     ]
   }
 
   // Fetch from profiles table which has all the data we need
   const { data: profilesData, error: profilesError } = await (supabase as any)
     .from('profiles')
-    .select('id, email, role, full_name, is_sales_active')
+    .select('id, email, role, full_name, is_sales_active, sales_channel')
 
   if (profilesError) {
     console.error('Error fetching profiles:', profilesError)
@@ -342,7 +370,8 @@ export async function getUsers(): Promise<{ id: string; email: string; role: 'ad
         role: (role.role || 'viewer') as 'admin' | 'viewer' | 'blocked',
         email: history?.user_email || 'Email desconhecido',
         full_name: null,
-        is_sales_active: null
+        is_sales_active: null,
+        sales_channel: 'all' as SalesChannel
       }
     })
 
@@ -355,7 +384,8 @@ export async function getUsers(): Promise<{ id: string; email: string; role: 'ad
     email: profile.email || 'Email desconhecido',
     role: (profile.role || 'viewer') as 'admin' | 'viewer' | 'blocked',
     full_name: profile.full_name || null,
-    is_sales_active: profile.is_sales_active ?? null
+    is_sales_active: profile.is_sales_active ?? null,
+    sales_channel: (profile.sales_channel || 'all') as SalesChannel
   }))
 }
 
@@ -388,10 +418,10 @@ export async function blockUser(userId: string, blocked: boolean): Promise<{ suc
   }
 }
 
-// Atualiza nome, role e participação em metas
+// Atualiza nome, role, participação em metas e canal de vendas
 export async function updateUserProfile(
   userId: string,
-  params: { role?: UserRole; fullName?: string; isSalesActive?: boolean }
+  params: { role?: UserRole; fullName?: string; isSalesActive?: boolean; salesChannel?: SalesChannel }
 ): Promise<{ success: boolean; error?: string }> {
   if (!isSupabaseConfigured) {
     return { success: false, error: 'Supabase não configurado para edição de usuário' }
@@ -409,6 +439,7 @@ export async function updateUserProfile(
     if (params.role !== undefined) payload.role = params.role
     if (params.fullName !== undefined) payload.full_name = params.fullName
     if (params.isSalesActive !== undefined) payload.is_sales_active = params.isSalesActive
+    if (params.salesChannel !== undefined) payload.sales_channel = params.salesChannel
 
     if (Object.keys(payload).length > 0) {
       const { error: profileError } = await (supabase as any)

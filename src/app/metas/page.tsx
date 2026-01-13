@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Target, Phone, FileText, ShoppingBag, Plus, Calendar, ChevronLeft, ChevronRight, X, Save, AlertCircle, Users, Search, Lock, Check, CheckCircle2 } from 'lucide-react'
+import { ArrowLeft, Target, Phone, Mail, FileText, ShoppingBag, Plus, Calendar, ChevronLeft, ChevronRight, X, Save, AlertCircle, Users, Search, Lock, Check, CheckCircle2, Sun, Moon } from 'lucide-react'
 import { isAuthenticated, getCurrentUser, isLocalMode, isAdmin, isSalesActive } from '@/lib/auth'
+import { useTheme } from '@/lib/ThemeContext'
 import { getUserPerformance, getLeaderboardData, UserPerformance, LeaderboardEntry, getWeeklyLogs, upsertPerformanceLog, PerformanceLog } from '@/lib/goals'
 import { useIsMobile } from '@/hooks/useResponsive'
 import Link from 'next/link'
@@ -12,6 +13,7 @@ import Image from 'next/image'
 export default function GoalsPage() {
   const router = useRouter()
   const isMobile = useIsMobile()
+  const { theme, toggleTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   const [currentDate, setCurrentDate] = useState(new Date())
   const [loading, setLoading] = useState(true)
@@ -22,8 +24,8 @@ export default function GoalsPage() {
   // Data State
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [currentUserEntry, setCurrentUserEntry] = useState<LeaderboardEntry | null>(null)
-  const [userLastWeekData, setUserLastWeekData] = useState<Record<string, { contacts: number; quotes: number; orders: number }>>({})
-  const [userTodayData, setUserTodayData] = useState<Record<string, { contacts: number; quotes: number; orders: number }>>({})
+  const [userLastWeekData, setUserLastWeekData] = useState<Record<string, { contacts: number; emails: number; quotes: number; orders: number }>>({})
+  const [userTodayData, setUserTodayData] = useState<Record<string, { contacts: number; emails: number; quotes: number; orders: number }>>({})
   
   // Weekly Timesheet State
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(getMonday(new Date()))
@@ -31,11 +33,12 @@ export default function GoalsPage() {
   const [expandedDay, setExpandedDay] = useState<string | null>(null) // Date string YYYY-MM-DD
   const [dayForm, setDayForm] = useState({
     contacts: 0,
+    emails: 0,
     quotes: 0,
     orders: 0
   })
   const [savingDay, setSavingDay] = useState<string | null>(null)
-  const [lastWeekSummary, setLastWeekSummary] = useState<{ contacts: number; quotes: number; orders: number } | null>(null)
+  const [lastWeekSummary, setLastWeekSummary] = useState<{ contacts: number; emails: number; quotes: number; orders: number } | null>(null)
 
   function getMonday(d: Date) {
     d = new Date(d);
@@ -109,7 +112,7 @@ export default function GoalsPage() {
         setLeaderboard(data)
         
         // Load last week data for each user
-        const lastWeekDataMap: Record<string, { contacts: number; quotes: number; orders: number }> = {}
+        const lastWeekDataMap: Record<string, { contacts: number; emails: number; quotes: number; orders: number }> = {}
         
         // Calculate last week dates
         const today = new Date()
@@ -125,7 +128,7 @@ export default function GoalsPage() {
         const endStr = lastWeekFriday.toISOString().split('T')[0]
         
         // Load last week data and today data for each user in parallel
-        const todayDataMap: Record<string, { contacts: number; quotes: number; orders: number }> = {}
+        const todayDataMap: Record<string, { contacts: number; emails: number; quotes: number; orders: number }> = {}
         const todayStr = new Date().toISOString().split('T')[0]
         
         await Promise.all(
@@ -135,23 +138,25 @@ export default function GoalsPage() {
               const logs = await getWeeklyLogs(entry.user.id, startStr, endStr)
               const summary = logs.reduce((acc, log) => ({
                 contacts: acc.contacts + (log.contacts_done || 0),
+                emails: acc.emails + (log.emails_done || 0),
                 quotes: acc.quotes + (log.quotes_done || 0),
                 orders: acc.orders + (log.orders_done || 0)
-              }), { contacts: 0, quotes: 0, orders: 0 })
+              }), { contacts: 0, emails: 0, quotes: 0, orders: 0 })
               lastWeekDataMap[entry.user.id] = summary
               
               // Load today data
               const todayLogs = await getWeeklyLogs(entry.user.id, todayStr, todayStr)
               const todaySummary = todayLogs.reduce((acc, log) => ({
                 contacts: acc.contacts + (log.contacts_done || 0),
+                emails: acc.emails + (log.emails_done || 0),
                 quotes: acc.quotes + (log.quotes_done || 0),
                 orders: acc.orders + (log.orders_done || 0)
-              }), { contacts: 0, quotes: 0, orders: 0 })
+              }), { contacts: 0, emails: 0, quotes: 0, orders: 0 })
               todayDataMap[entry.user.id] = todaySummary
             } catch (error) {
               console.error(`Error loading data for user ${entry.user.id}:`, error)
-              lastWeekDataMap[entry.user.id] = { contacts: 0, quotes: 0, orders: 0 }
-              todayDataMap[entry.user.id] = { contacts: 0, quotes: 0, orders: 0 }
+              lastWeekDataMap[entry.user.id] = { contacts: 0, emails: 0, quotes: 0, orders: 0 }
+              todayDataMap[entry.user.id] = { contacts: 0, emails: 0, quotes: 0, orders: 0 }
             }
           })
         )
@@ -185,7 +190,7 @@ export default function GoalsPage() {
       
       if (isLocal) {
         setWeeklyLogs([])
-        setLastWeekSummary({ contacts: 0, quotes: 0, orders: 0 })
+        setLastWeekSummary({ contacts: 0, emails: 0, quotes: 0, orders: 0 })
       } else {
         const logs = await getWeeklyLogs(userId, startStr, endStr)
         setWeeklyLogs(logs)
@@ -223,19 +228,20 @@ export default function GoalsPage() {
       const endStr = lastWeekFriday.toISOString().split('T')[0]
       
       if (isLocal) {
-        setLastWeekSummary({ contacts: 0, quotes: 0, orders: 0 })
+        setLastWeekSummary({ contacts: 0, emails: 0, quotes: 0, orders: 0 })
       } else {
         const logs = await getWeeklyLogs(userId, startStr, endStr)
         const summary = logs.reduce((acc, log) => ({
           contacts: acc.contacts + (log.contacts_done || 0),
+          emails: acc.emails + (log.emails_done || 0),
           quotes: acc.quotes + (log.quotes_done || 0),
           orders: acc.orders + (log.orders_done || 0)
-        }), { contacts: 0, quotes: 0, orders: 0 })
+        }), { contacts: 0, emails: 0, quotes: 0, orders: 0 })
         setLastWeekSummary(summary)
       }
     } catch (error) {
       console.error('Error loading last week summary:', error)
-      setLastWeekSummary({ contacts: 0, quotes: 0, orders: 0 })
+      setLastWeekSummary({ contacts: 0, emails: 0, quotes: 0, orders: 0 })
     }
   }
 
@@ -249,6 +255,7 @@ export default function GoalsPage() {
       setExpandedDay(dateStr)
       setDayForm({
         contacts: existingLog?.contacts_done || 0,
+        emails: existingLog?.emails_done || 0,
         quotes: existingLog?.quotes_done || 0,
         orders: existingLog?.orders_done || 0
       })
@@ -268,6 +275,7 @@ export default function GoalsPage() {
     const result = await upsertPerformanceLog(userId, {
       date: dateStr,
       contacts: dayForm.contacts,
+      emails: dayForm.emails,
       quotes: dayForm.quotes,
       orders: dayForm.orders
     })
@@ -367,14 +375,23 @@ export default function GoalsPage() {
             </div>
           </div>
           
-          {userIsAdmin && (
-            <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Botão de tema */}
+            <button
+              onClick={toggleTheme}
+              className="p-1.5 sm:p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              title={theme === 'dark' ? 'Modo claro' : 'Modo escuro'}
+            >
+              {theme === 'dark' ? <Sun className="h-4 w-4 sm:h-5 sm:w-5" /> : <Moon className="h-4 w-4 sm:h-5 sm:w-5" />}
+            </button>
+            
+            {userIsAdmin && (
               <Link href="/admin" className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">
                 <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 <span className="hidden sm:inline">Admin</span>
               </Link>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </header>
 
@@ -420,16 +437,20 @@ export default function GoalsPage() {
                     <p className="text-green-100 text-xs sm:text-sm">Resumo Semanal</p>
                   </div>
                   <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
-                    <div className="bg-white/10 backdrop-blur-sm px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1.5 sm:gap-2 flex-1 sm:flex-initial justify-center sm:justify-start">
-                      <Phone className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    <div className="bg-white/10 backdrop-blur-sm px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1 sm:gap-2 flex-1 sm:flex-initial justify-center sm:justify-start">
+                      <Phone className="h-3 w-3 sm:h-4 sm:w-4" />
                       {lastWeekSummary.contacts}
                     </div>
-                    <div className="bg-white/10 backdrop-blur-sm px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1.5 sm:gap-2 flex-1 sm:flex-initial justify-center sm:justify-start">
-                      <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    <div className="bg-white/10 backdrop-blur-sm px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1 sm:gap-2 flex-1 sm:flex-initial justify-center sm:justify-start">
+                      <Mail className="h-3 w-3 sm:h-4 sm:w-4" />
+                      {lastWeekSummary.emails}
+                    </div>
+                    <div className="bg-white/10 backdrop-blur-sm px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1 sm:gap-2 flex-1 sm:flex-initial justify-center sm:justify-start">
+                      <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
                       {lastWeekSummary.quotes}
                     </div>
-                    <div className="bg-white/10 backdrop-blur-sm px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1.5 sm:gap-2 flex-1 sm:flex-initial justify-center sm:justify-start">
-                      <ShoppingBag className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    <div className="bg-white/10 backdrop-blur-sm px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1 sm:gap-2 flex-1 sm:flex-initial justify-center sm:justify-start">
+                      <ShoppingBag className="h-3 w-3 sm:h-4 sm:w-4" />
                       {lastWeekSummary.orders}
                     </div>
                   </div>
@@ -468,23 +489,23 @@ export default function GoalsPage() {
                         </div>
                       </div>
                       
-                      {/* KPIs em Grid Compacto */}
-                      <div className="grid grid-cols-3 gap-2">
-                        {/* Contatos */}
+                      {/* KPIs em Grid Compacto - 4 colunas */}
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {/* Telefone */}
                         <div className="text-center">
-                          <div className="flex items-center justify-center gap-1 text-gray-500 dark:text-gray-400 mb-0.5">
-                            <Phone className="h-3 w-3" />
-                            <span className="text-[10px] font-medium">Contatos</span>
+                          <div className="flex items-center justify-center gap-0.5 text-gray-500 dark:text-gray-400 mb-0.5">
+                            <Phone className="h-2.5 w-2.5" />
+                            <span className="text-[9px] font-medium">Telefone</span>
                           </div>
-                          <p className="text-sm font-bold text-gray-900 dark:text-white">
+                          <p className="text-xs font-bold text-gray-900 dark:text-white">
                             {entry.realized.contacts}/{entry.goals?.target_contacts || '-'}
                           </p>
-                          <div className="flex flex-col items-center text-[10px] leading-tight">
+                          <div className="flex flex-col items-center text-[9px] leading-tight">
                             {userTodayData[entry.user.id] && (
-                              <span className="text-blue-600 dark:text-blue-400">Hoje: {userTodayData[entry.user.id].contacts}</span>
+                              <span className="text-blue-600 dark:text-blue-400">H:{userTodayData[entry.user.id].contacts}</span>
                             )}
                             {userLastWeekData[entry.user.id] && (
-                              <span className="text-green-600 dark:text-green-400">Semana: {userLastWeekData[entry.user.id].contacts}</span>
+                              <span className="text-green-600 dark:text-green-400">S:{userLastWeekData[entry.user.id].contacts}</span>
                             )}
                           </div>
                           <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1 mt-1 overflow-hidden">
@@ -499,21 +520,50 @@ export default function GoalsPage() {
                           </div>
                         </div>
                         
-                        {/* Orçamentos */}
+                        {/* Emails */}
                         <div className="text-center">
-                          <div className="flex items-center justify-center gap-1 text-gray-500 dark:text-gray-400 mb-0.5">
-                            <FileText className="h-3 w-3" />
-                            <span className="text-[10px] font-medium">Orçamentos</span>
+                          <div className="flex items-center justify-center gap-0.5 text-gray-500 dark:text-gray-400 mb-0.5">
+                            <Mail className="h-2.5 w-2.5" />
+                            <span className="text-[9px] font-medium">Emails</span>
                           </div>
-                          <p className="text-sm font-bold text-gray-900 dark:text-white">
-                            {entry.realized.quotes}/{entry.goals?.target_quotes || '-'}
+                          <p className="text-xs font-bold text-gray-900 dark:text-white">
+                            {entry.realized.emails}/{entry.goals?.target_emails || '-'}
                           </p>
-                          <div className="flex flex-col items-center text-[10px] leading-tight">
+                          <div className="flex flex-col items-center text-[9px] leading-tight">
                             {userTodayData[entry.user.id] && (
-                              <span className="text-blue-600 dark:text-blue-400">Hoje: {userTodayData[entry.user.id].quotes}</span>
+                              <span className="text-blue-600 dark:text-blue-400">H:{userTodayData[entry.user.id].emails}</span>
                             )}
                             {userLastWeekData[entry.user.id] && (
-                              <span className="text-green-600 dark:text-green-400">Semana: {userLastWeekData[entry.user.id].quotes}</span>
+                              <span className="text-green-600 dark:text-green-400">S:{userLastWeekData[entry.user.id].emails}</span>
+                            )}
+                          </div>
+                          <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1 mt-1 overflow-hidden">
+                            <div 
+                              className={`h-full rounded-full ${
+                                (entry.realized.emails / (entry.goals?.target_emails || 1)) * 100 >= 100 ? 'bg-green-500' :
+                                (entry.realized.emails / (entry.goals?.target_emails || 1)) * 100 >= 80 ? 'bg-blue-500' :
+                                (entry.realized.emails / (entry.goals?.target_emails || 1)) * 100 >= 40 ? 'bg-yellow-500' : 'bg-red-500'
+                              }`}
+                              style={{ width: `${Math.min((entry.realized.emails / (entry.goals?.target_emails || 1)) * 100, 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                        
+                        {/* Orçamentos */}
+                        <div className="text-center">
+                          <div className="flex items-center justify-center gap-0.5 text-gray-500 dark:text-gray-400 mb-0.5">
+                            <FileText className="h-2.5 w-2.5" />
+                            <span className="text-[9px] font-medium">Orçam.</span>
+                          </div>
+                          <p className="text-xs font-bold text-gray-900 dark:text-white">
+                            {entry.realized.quotes}/{entry.goals?.target_quotes || '-'}
+                          </p>
+                          <div className="flex flex-col items-center text-[9px] leading-tight">
+                            {userTodayData[entry.user.id] && (
+                              <span className="text-blue-600 dark:text-blue-400">H:{userTodayData[entry.user.id].quotes}</span>
+                            )}
+                            {userLastWeekData[entry.user.id] && (
+                              <span className="text-green-600 dark:text-green-400">S:{userLastWeekData[entry.user.id].quotes}</span>
                             )}
                           </div>
                           <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1 mt-1 overflow-hidden">
@@ -530,19 +580,19 @@ export default function GoalsPage() {
                         
                         {/* Pedidos */}
                         <div className="text-center">
-                          <div className="flex items-center justify-center gap-1 text-gray-500 dark:text-gray-400 mb-0.5">
-                            <ShoppingBag className="h-3 w-3" />
-                            <span className="text-[10px] font-medium">Pedidos</span>
+                          <div className="flex items-center justify-center gap-0.5 text-gray-500 dark:text-gray-400 mb-0.5">
+                            <ShoppingBag className="h-2.5 w-2.5" />
+                            <span className="text-[9px] font-medium">Pedidos</span>
                           </div>
-                          <p className="text-sm font-bold text-gray-900 dark:text-white">
+                          <p className="text-xs font-bold text-gray-900 dark:text-white">
                             {entry.realized.orders}/{entry.goals?.target_orders || '-'}
                           </p>
-                          <div className="flex flex-col items-center text-[10px] leading-tight">
+                          <div className="flex flex-col items-center text-[9px] leading-tight">
                             {userTodayData[entry.user.id] && (
-                              <span className="text-blue-600 dark:text-blue-400">Hoje: {userTodayData[entry.user.id].orders}</span>
+                              <span className="text-blue-600 dark:text-blue-400">H:{userTodayData[entry.user.id].orders}</span>
                             )}
                             {userLastWeekData[entry.user.id] && (
-                              <span className="text-green-600 dark:text-green-400">Semana: {userLastWeekData[entry.user.id].orders}</span>
+                              <span className="text-green-600 dark:text-green-400">S:{userLastWeekData[entry.user.id].orders}</span>
                             )}
                           </div>
                           <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1 mt-1 overflow-hidden">
@@ -562,13 +612,25 @@ export default function GoalsPage() {
                 )}
               </div>
             ) : (
-              // Versão Desktop: Tabela
+              // Versão Desktop: Tabela com 5 colunas
               <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-                <div className="grid grid-cols-12 gap-4 px-4 sm:px-6 py-3 sm:py-4 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  <div className="col-span-4 sm:col-span-3">Usuário</div>
-                  <div className="col-span-8 sm:col-span-3 text-center sm:text-left">Contatos</div>
-                  <div className="col-span-6 sm:col-span-3 hidden sm:block">Orçamentos</div>
-                  <div className="col-span-6 sm:col-span-3 hidden sm:block">Pedidos</div>
+                {/* Header com título agrupador "Contatos" */}
+                <div className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
+                  {/* Linha superior: título agrupador */}
+                  <div className="grid grid-cols-5 gap-2 px-4 sm:px-6 pt-2 text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                    <div></div>
+                    <div className="col-span-2 text-center border-b border-blue-200 dark:border-blue-700 pb-1">Contatos</div>
+                    <div></div>
+                    <div></div>
+                  </div>
+                  {/* Linha inferior: colunas */}
+                  <div className="grid grid-cols-5 gap-2 px-4 sm:px-6 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    <div>Usuário</div>
+                    <div className="text-center">Telefone</div>
+                    <div className="text-center">Emails</div>
+                    <div className="text-center">Orçamentos</div>
+                    <div className="text-center">Pedidos</div>
+                  </div>
                 </div>
                 <div className="divide-y divide-gray-200 dark:divide-gray-700">
                   {leaderboard.length === 0 ? (
@@ -577,9 +639,9 @@ export default function GoalsPage() {
                     </div>
                   ) : (
                     leaderboard.map((entry) => (
-                      <div key={entry.user.id} className="grid grid-cols-12 gap-4 px-4 sm:px-6 py-4 items-center hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                        <div className="col-span-4 sm:col-span-3 flex items-center gap-3 overflow-hidden">
-                          <div className="h-10 w-10 rounded-full bg-blue-600 dark:bg-blue-500 flex items-center justify-center flex-shrink-0 text-white">
+                      <div key={entry.user.id} className="grid grid-cols-5 gap-2 px-4 sm:px-6 py-4 items-center hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                        <div className="flex items-center gap-2 overflow-hidden">
+                          <div className="h-9 w-9 rounded-full bg-blue-600 dark:bg-blue-500 flex items-center justify-center flex-shrink-0 text-white">
                             {entry.user.avatar_url ? (
                               <img src={entry.user.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
                             ) : (
@@ -587,13 +649,13 @@ export default function GoalsPage() {
                             )}
                           </div>
                           <div className="min-w-0">
-                            <p className="font-medium text-gray-900 dark:text-white truncate text-sm sm:text-base">
+                            <p className="font-medium text-gray-900 dark:text-white truncate text-sm">
                               {entry.user.full_name}
                             </p>
-                            <p className="text-xs text-gray-500 truncate hidden sm:block">{entry.user.role}</p>
+                            <p className="text-[10px] text-gray-500 truncate">{entry.user.role}</p>
                           </div>
                         </div>
-                        <div className="col-span-8 sm:col-span-3 flex justify-center sm:justify-start">     
+                        <div className="flex justify-center">     
                           <KPICell 
                             current={entry.realized.contacts} 
                             target={entry.goals?.target_contacts || 0} 
@@ -602,7 +664,16 @@ export default function GoalsPage() {
                             lastWeek={userLastWeekData[entry.user.id]?.contacts}
                           />
                         </div>
-                        <div className="col-span-6 sm:col-span-3 hidden sm:flex">
+                        <div className="flex justify-center">
+                          <KPICell 
+                            current={entry.realized.emails} 
+                            target={entry.goals?.target_emails || 0} 
+                            icon={Mail}
+                            today={userTodayData[entry.user.id]?.emails}
+                            lastWeek={userLastWeekData[entry.user.id]?.emails}
+                          />
+                        </div>
+                        <div className="flex justify-center">
                           <KPICell 
                             current={entry.realized.quotes} 
                             target={entry.goals?.target_quotes || 0} 
@@ -611,7 +682,7 @@ export default function GoalsPage() {
                             lastWeek={userLastWeekData[entry.user.id]?.quotes}
                           />
                         </div>
-                        <div className="col-span-6 sm:col-span-3 hidden sm:flex">
+                        <div className="flex justify-center">
                           <KPICell 
                             current={entry.realized.orders} 
                             target={entry.goals?.target_orders || 0} 
@@ -667,16 +738,20 @@ export default function GoalsPage() {
                     <p className="text-green-100 text-xs sm:text-sm">Resumo Semanal</p>
                   </div>
                   <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
-                    <div className="bg-white/10 backdrop-blur-sm px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1.5 sm:gap-2 flex-1 sm:flex-initial justify-center sm:justify-start">
-                      <Phone className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    <div className="bg-white/10 backdrop-blur-sm px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1 sm:gap-2 flex-1 sm:flex-initial justify-center sm:justify-start">
+                      <Phone className="h-3 w-3 sm:h-4 sm:w-4" />
                       {lastWeekSummary.contacts}
                     </div>
-                    <div className="bg-white/10 backdrop-blur-sm px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1.5 sm:gap-2 flex-1 sm:flex-initial justify-center sm:justify-start">
-                      <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    <div className="bg-white/10 backdrop-blur-sm px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1 sm:gap-2 flex-1 sm:flex-initial justify-center sm:justify-start">
+                      <Mail className="h-3 w-3 sm:h-4 sm:w-4" />
+                      {lastWeekSummary.emails}
+                    </div>
+                    <div className="bg-white/10 backdrop-blur-sm px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1 sm:gap-2 flex-1 sm:flex-initial justify-center sm:justify-start">
+                      <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
                       {lastWeekSummary.quotes}
                     </div>
-                    <div className="bg-white/10 backdrop-blur-sm px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1.5 sm:gap-2 flex-1 sm:flex-initial justify-center sm:justify-start">
-                      <ShoppingBag className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    <div className="bg-white/10 backdrop-blur-sm px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1 sm:gap-2 flex-1 sm:flex-initial justify-center sm:justify-start">
+                      <ShoppingBag className="h-3 w-3 sm:h-4 sm:w-4" />
                       {lastWeekSummary.orders}
                     </div>
                   </div>
@@ -758,10 +833,10 @@ export default function GoalsPage() {
                     {/* Expandable Input Area */}
                     {isExpanded && (
                       <div className="p-3 sm:p-4 pt-0 border-t border-gray-100 dark:border-gray-700 mt-2 bg-gray-50/50 dark:bg-gray-800/50">
-                        <div className="grid grid-cols-3 gap-2 sm:gap-3 py-3 sm:py-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 py-3 sm:py-4">
                           <div className="space-y-1.5">
                             <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                              <Phone className="h-3 w-3" /> <span className="hidden sm:inline">Contatos</span>
+                              <Phone className="h-3 w-3" /> <span>Telefone</span>
                             </label>
                             <input 
                               type="number" min="0" 
@@ -772,7 +847,18 @@ export default function GoalsPage() {
                           </div>
                           <div className="space-y-1.5">
                             <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                              <FileText className="h-3 w-3" /> <span className="hidden sm:inline">Orçamentos</span>
+                              <Mail className="h-3 w-3" /> <span>Emails</span>
+                            </label>
+                            <input 
+                              type="number" min="0" 
+                              value={dayForm.emails}
+                              onChange={(e) => setDayForm({...dayForm, emails: parseInt(e.target.value) || 0})}
+                              className="w-full p-2 sm:p-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-center font-bold text-sm sm:text-base text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 outline-none"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                              <FileText className="h-3 w-3" /> <span>Orçam.</span>
                             </label>
                             <input 
                               type="number" min="0" 
@@ -783,7 +869,7 @@ export default function GoalsPage() {
                           </div>
                           <div className="space-y-1.5">
                             <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                              <ShoppingBag className="h-3 w-3" /> <span className="hidden sm:inline">Pedidos</span>
+                              <ShoppingBag className="h-3 w-3" /> <span>Pedidos</span>
                             </label>
                             <input 
                               type="number" min="0" 

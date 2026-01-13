@@ -6,6 +6,7 @@ export interface MonthlyGoal {
   month: number
   year: number
   target_contacts: number
+  target_emails: number
   target_quotes: number
   target_orders: number
 }
@@ -15,6 +16,7 @@ export interface PerformanceLog {
   user_id: string
   entry_date: string
   contacts_done: number
+  emails_done: number
   quotes_done: number
   orders_done: number
   notes?: string
@@ -24,6 +26,7 @@ export interface UserPerformance {
   goals: MonthlyGoal | null
   realized: {
     contacts: number
+    emails: number
     quotes: number
     orders: number
   }
@@ -82,13 +85,14 @@ export async function getPerformanceLogs(userId: string, month: number, year: nu
 
 export async function addPerformanceLog(
   userId: string,
-  data: { contacts: number; quotes: number; orders: number; notes?: string; date?: string }
+  data: { contacts: number; emails: number; quotes: number; orders: number; notes?: string; date?: string }
 ) {
   if (!isSupabaseConfigured || !supabase) return { success: false, error: 'Supabase não configurado' }
 
   const { error } = await (supabase as any).from('performance_logs').insert({
     user_id: userId,
     contacts_done: data.contacts,
+    emails_done: data.emails,
     quotes_done: data.quotes,
     orders_done: data.orders,
     notes: data.notes,
@@ -124,13 +128,14 @@ export async function getWeeklyLogs(userId: string, startDate: string, endDate: 
 
 export async function upsertPerformanceLog(
   userId: string,
-  data: { contacts: number; quotes: number; orders: number; notes?: string; date: string }
+  data: { contacts: number; emails: number; quotes: number; orders: number; notes?: string; date: string }
 ) {
   if (!isSupabaseConfigured || !supabase) return { success: false, error: 'Supabase não configurado' }
 
   const { error } = await (supabase as any).from('performance_logs').upsert({
     user_id: userId,
     contacts_done: data.contacts,
+    emails_done: data.emails,
     quotes_done: data.quotes,
     orders_done: data.orders,
     notes: data.notes,
@@ -149,7 +154,7 @@ export async function getUserPerformance(userId: string, month: number, year: nu
   if (!isSupabaseConfigured || !supabase) {
     return {
       goals: null,
-      realized: { contacts: 0, quotes: 0, orders: 0 }
+      realized: { contacts: 0, emails: 0, quotes: 0, orders: 0 }
     }
   }
 
@@ -161,10 +166,11 @@ export async function getUserPerformance(userId: string, month: number, year: nu
   const realized = logs.reduce(
     (acc, log) => ({
       contacts: acc.contacts + (log.contacts_done || 0),
+      emails: acc.emails + (log.emails_done || 0),
       quotes: acc.quotes + (log.quotes_done || 0),
       orders: acc.orders + (log.orders_done || 0)
     }),
-    { contacts: 0, quotes: 0, orders: 0 }
+    { contacts: 0, emails: 0, quotes: 0, orders: 0 }
   )
 
   return {
@@ -186,6 +192,7 @@ export interface LeaderboardEntry {
   goals: MonthlyGoal | null
   realized: {
     contacts: number
+    emails: number
     quotes: number
     orders: number
   }
@@ -235,10 +242,11 @@ export async function getLeaderboardData(month: number, year: number): Promise<L
     const realized = userLogs.reduce(
       (acc: any, log: any) => ({
         contacts: acc.contacts + (log.contacts_done || 0),
+        emails: acc.emails + (log.emails_done || 0),
         quotes: acc.quotes + (log.quotes_done || 0),
         orders: acc.orders + (log.orders_done || 0)
       }),
-      { contacts: 0, quotes: 0, orders: 0 }
+      { contacts: 0, emails: 0, quotes: 0, orders: 0 }
     )
 
     return {
@@ -262,7 +270,7 @@ export async function setMonthlyGoal(
   userId: string,
   month: number,
   year: number,
-  targets: { contacts: number; quotes: number; orders: number }
+  targets: { contacts: number; emails: number; quotes: number; orders: number }
 ) {
   if (!isSupabaseConfigured || !supabase) return { success: false, error: 'Supabase não configurado' }
 
@@ -275,6 +283,7 @@ export async function setMonthlyGoal(
       .from('monthly_goals')
       .update({
         target_contacts: targets.contacts,
+        target_emails: targets.emails,
         target_quotes: targets.quotes,
         target_orders: targets.orders,
         updated_at: new Date().toISOString()
@@ -289,6 +298,7 @@ export async function setMonthlyGoal(
         month,
         year,
         target_contacts: targets.contacts,
+        target_emails: targets.emails,
         target_quotes: targets.quotes,
         target_orders: targets.orders
       })

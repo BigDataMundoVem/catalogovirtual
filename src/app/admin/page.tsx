@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase, isSupabaseConfigured, uploadImage, deleteImage } from '@/lib/supabase'
-import { isAuthenticated, isAdmin, logout, getCurrentUser, updatePassword, createUser, getLoginHistory, isLocalMode, getUsers, updateUserProfile, deleteUserProfile, blockUser } from '@/lib/auth'
+import { isAuthenticated, isAdmin, logout, getCurrentUser, updatePassword, createUser, getLoginHistory, isLocalMode, getUsers, updateUserProfile, deleteUserProfile, blockUser, SalesChannel } from '@/lib/auth'
 import { getMonthlyGoal, setMonthlyGoal } from '@/lib/goals'
 import { useIsMobile } from '@/hooks/useResponsive'
 import { Tabs } from '@/components/Tabs'
@@ -49,6 +49,7 @@ interface UserData {
   role: 'admin' | 'viewer' | 'blocked'
   full_name?: string | null
   is_sales_active?: boolean | null
+  sales_channel?: SalesChannel | null
 }
 
 export default function AdminPage() {
@@ -81,10 +82,10 @@ export default function AdminPage() {
   const [categoryForm, setCategoryForm] = useState({ name: '' })
 
   // User Modal
-  const [newUserForm, setNewUserForm] = useState({ email: '', password: '', confirmPassword: '', role: 'viewer' as 'admin' | 'viewer' | 'blocked', name: '', isSalesActive: true })
+  const [newUserForm, setNewUserForm] = useState({ email: '', password: '', confirmPassword: '', role: 'viewer' as 'admin' | 'viewer' | 'blocked', name: '', isSalesActive: true, salesChannel: 'all' as SalesChannel })
   const [userMessage, setUserMessage] = useState({ type: '', text: '' })
   const [editUserModal, setEditUserModal] = useState<{ open: boolean; user: UserData | null }>({ open: false, user: null })
-  const [editForm, setEditForm] = useState({ name: '', role: 'viewer' as 'admin' | 'viewer' | 'blocked', isSalesActive: true })
+  const [editForm, setEditForm] = useState({ name: '', role: 'viewer' as 'admin' | 'viewer' | 'blocked', isSalesActive: true, salesChannel: 'all' as SalesChannel })
   const [editMessage, setEditMessage] = useState<{ type: '' | 'error' | 'success'; text: string }>({ type: '', text: '' })
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null)
 
@@ -95,6 +96,7 @@ export default function AdminPage() {
     month: new Date().getMonth() + 1,
     year: new Date().getFullYear(),
     contacts: 0,
+    emails: 0,
     quotes: 0,
     orders: 0
   })
@@ -177,7 +179,8 @@ export default function AdminPage() {
     setEditForm({
       name: user.full_name || '',
       role: user.role,
-      isSalesActive: user.is_sales_active ?? true
+      isSalesActive: user.is_sales_active ?? true,
+      salesChannel: user.sales_channel || 'all'
     })
     setEditMessage({ type: '', text: '' })
   }
@@ -190,7 +193,8 @@ export default function AdminPage() {
     const result = await updateUserProfile(editUserModal.user.id, {
       role: editForm.role,
       fullName: editForm.name,
-      isSalesActive: editForm.isSalesActive
+      isSalesActive: editForm.isSalesActive,
+      salesChannel: editForm.salesChannel
     })
 
     if (result.success) {
@@ -481,11 +485,11 @@ export default function AdminPage() {
       return
     }
 
-    const result = await createUser(newUserForm.email, newUserForm.password, newUserForm.role, newUserForm.name, newUserForm.isSalesActive)
+    const result = await createUser(newUserForm.email, newUserForm.password, newUserForm.role, newUserForm.name, newUserForm.isSalesActive, newUserForm.salesChannel)
 
     if (result.success) {
       setUserMessage({ type: 'success', text: `Usuário ${newUserForm.role === 'admin' ? 'administrador' : 'visualizador'} criado! Verifique o email para confirmar.` })
-      setNewUserForm({ email: '', password: '', confirmPassword: '', role: 'viewer', name: '', isSalesActive: true })
+      setNewUserForm({ email: '', password: '', confirmPassword: '', role: 'viewer', name: '', isSalesActive: true, salesChannel: 'all' })
       loadUsers()
     } else {
       setUserMessage({ type: 'error', text: result.error || 'Erro ao criar usuário' })
@@ -501,6 +505,7 @@ export default function AdminPage() {
       setGoalForm({
         ...goalForm,
         contacts: existing.target_contacts,
+        emails: existing.target_emails || 0,
         quotes: existing.target_quotes,
         orders: existing.target_orders
       })
@@ -508,6 +513,7 @@ export default function AdminPage() {
       setGoalForm({
         ...goalForm,
         contacts: 0,
+        emails: 0,
         quotes: 0,
         orders: 0
       })
@@ -521,6 +527,7 @@ export default function AdminPage() {
 
     const result = await setMonthlyGoal(selectedUserForGoal.id, goalForm.month, goalForm.year, {
       contacts: goalForm.contacts,
+      emails: goalForm.emails,
       quotes: goalForm.quotes,
       orders: goalForm.orders
     })
@@ -820,6 +827,21 @@ export default function AdminPage() {
                     <span className="text-xs text-gray-500 dark:text-gray-400">Se marcado, aparecerá no dashboard de vendas</span>
                   </div>
                 </label>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Canal de Vendas</label>
+                <select
+                  value={newUserForm.salesChannel}
+                  onChange={(e) => setNewUserForm({ ...newUserForm, salesChannel: e.target.value as SalesChannel })}
+                  className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                >
+                  <option value="all">Todos os Canais (Admin)</option>
+                  <option value="consumo">Consumo</option>
+                  <option value="revenda">Revenda</option>
+                  <option value="cozinhas">Cozinhas Industriais</option>
+                </select>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Define qual canal o usuário pode visualizar em Vendas &amp; Faturamento</p>
               </div>
 
               <button type="submit" className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"><Plus className="h-4 w-4" /><span>Criar Usuário</span></button>
@@ -1145,7 +1167,7 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                <div className="space-y-3 pt-2">
+                <div className="grid grid-cols-2 gap-3 pt-2">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Meta de Contatos</label>
                     <input 
@@ -1153,6 +1175,16 @@ export default function AdminPage() {
                       min="0"
                       value={goalForm.contacts} 
                       onChange={(e) => setGoalForm({...goalForm, contacts: parseInt(e.target.value)})} 
+                      className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Meta de Emails</label>
+                    <input 
+                      type="number" 
+                      min="0"
+                      value={goalForm.emails} 
+                      onChange={(e) => setGoalForm({...goalForm, emails: parseInt(e.target.value)})} 
                       className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" 
                     />
                   </div>
@@ -1276,6 +1308,21 @@ export default function AdminPage() {
                       <span className="text-xs text-gray-500 dark:text-gray-400">Se marcado, aparecerá no dashboard de vendas</span>
                     </div>
                   </label>
+                </div>
+
+                <div className="mt-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Canal de Vendas</label>
+                  <select
+                    value={editForm.salesChannel}
+                    onChange={(e) => setEditForm({ ...editForm, salesChannel: e.target.value as SalesChannel })}
+                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  >
+                    <option value="all">Todos os Canais (Admin)</option>
+                    <option value="consumo">Consumo</option>
+                    <option value="revenda">Revenda</option>
+                    <option value="cozinhas">Cozinhas Industriais</option>
+                  </select>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Define qual canal o usuário pode visualizar</p>
                 </div>
 
                 <div className="flex gap-3 pt-2">

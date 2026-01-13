@@ -77,6 +77,52 @@ export interface Database {
           user_agent?: string | null
         }
       }
+      sales_monthly_data: {
+        Row: {
+          id: string
+          user_id: string
+          nome: string
+          codigo: string | null
+          setor: string
+          canal: string
+          meta_mensal: number
+          valor_realizado: number
+          pedidos_em_aberto: number
+          ano: number
+          mes: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          nome: string
+          codigo?: string | null
+          setor: string
+          canal: string
+          meta_mensal?: number
+          valor_realizado?: number
+          pedidos_em_aberto?: number
+          ano: number
+          mes: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          nome?: string
+          codigo?: string | null
+          setor?: string
+          canal?: string
+          meta_mensal?: number
+          valor_realizado?: number
+          pedidos_em_aberto?: number
+          ano?: number
+          mes?: number
+          updated_at?: string
+        }
+      }
     }
   }
 }

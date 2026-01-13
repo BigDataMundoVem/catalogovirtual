@@ -1,11 +1,19 @@
 'use client'
 
-import React, { useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Plus } from 'lucide-react'
+import { ArrowLeft, Plus, Calendar, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 import { ChannelName, UserEntry, useSalesCalculations } from '@/components/sales/useSalesCalculations'
 import { TableHeaderGrouped, ChannelRow, ChannelFooter } from '@/components/sales/ChannelComponents'
 import { UserFormModal } from '@/components/sales/UserFormModal'
+import {
+  loadSalesData,
+  saveSalesUser,
+  deleteSalesUser,
+  getCurrentYearMonth,
+  formatMonthYear,
+  saveAllSalesData,
+} from '@/lib/salesData'
 
 type ChannelKey = 'consumo' | 'revenda' | 'cozinhas'
 
@@ -17,64 +25,141 @@ const CHANNELS: { key: ChannelKey; label: ChannelName }[] = [
 
 type ChannelState = Record<ChannelKey, UserEntry[]>
 
-const initialData: ChannelState = {
+// Dados iniciais para demonstração (usados apenas na primeira vez)
+const DEMO_DATA: ChannelState = {
   consumo: [
-    { id: 'c1', nome: 'Renata', codigo: 65, setor: 'Consumo', metaMensal: 280000, valorRealizado: 234893.26, pedidosEmAberto: 30519.04 },
-    { id: 'c2', nome: 'Andrey', codigo: 67, setor: 'Consumo', metaMensal: 150000, valorRealizado: 1430.14, pedidosEmAberto: 5332.99 },
-    { id: 'c3', nome: 'Glaucia', codigo: 66, setor: 'Consumo', metaMensal: 50000, valorRealizado: 20876.97, pedidosEmAberto: 0 },
-    { id: 'c4', nome: 'Amadeu', codigo: '', setor: 'Consumo', metaMensal: 20000, valorRealizado: 2440.43, pedidosEmAberto: 0 },
-    { id: 'c5', nome: 'Aparecido', codigo: '', setor: 'Consumo', metaMensal: 20000, valorRealizado: 0, pedidosEmAberto: 515.93 },
+    { id: 'c1', nome: 'Renata', codigo: 65, setor: 'Consumo', metaMensal: 280000, valorRealizado: 0, pedidosEmAberto: 0 },
+    { id: 'c2', nome: 'Andrey', codigo: 67, setor: 'Consumo', metaMensal: 150000, valorRealizado: 0, pedidosEmAberto: 0 },
+    { id: 'c3', nome: 'Glaucia', codigo: 66, setor: 'Consumo', metaMensal: 50000, valorRealizado: 0, pedidosEmAberto: 0 },
+    { id: 'c4', nome: 'Amadeu', codigo: '', setor: 'Consumo', metaMensal: 20000, valorRealizado: 0, pedidosEmAberto: 0 },
+    { id: 'c5', nome: 'Aparecido', codigo: '', setor: 'Consumo', metaMensal: 20000, valorRealizado: 0, pedidosEmAberto: 0 },
     { id: 'c6', nome: 'Luiz', codigo: '', setor: 'Consumo', metaMensal: 20000, valorRealizado: 0, pedidosEmAberto: 0 },
     { id: 'c7', nome: 'Carlos', codigo: '', setor: 'Consumo', metaMensal: 20000, valorRealizado: 0, pedidosEmAberto: 0 },
     { id: 'c8', nome: 'Abilio', codigo: '', setor: 'Consumo', metaMensal: 20000, valorRealizado: 0, pedidosEmAberto: 0 },
   ],
   revenda: [
-    { id: 'r1', nome: 'Marcio', codigo: 18, setor: 'Revenda', metaMensal: 300000, valorRealizado: 115511.72, pedidosEmAberto: 14843.82 },
-    { id: 'r2', nome: 'Sergio', codigo: 19, setor: 'Revenda', metaMensal: 100000, valorRealizado: 63485.84, pedidosEmAberto: 25161.46 },
-    { id: 'r3', nome: 'Jose Geraldo', codigo: 22, setor: 'Revenda', metaMensal: 50000, valorRealizado: 5523.91, pedidosEmAberto: 18139.57 },
-    { id: 'r4', nome: 'Fernanda', codigo: 63, setor: 'Revenda', metaMensal: 200000, valorRealizado: 131566.12, pedidosEmAberto: 5832.11 },
-    { id: 'r5', nome: 'Glaucia', codigo: 66, setor: 'Revenda', metaMensal: 50000, valorRealizado: 20876.97, pedidosEmAberto: 3399.80 },
+    { id: 'r1', nome: 'Marcio', codigo: 18, setor: 'Revenda', metaMensal: 300000, valorRealizado: 0, pedidosEmAberto: 0 },
+    { id: 'r2', nome: 'Sergio', codigo: 19, setor: 'Revenda', metaMensal: 100000, valorRealizado: 0, pedidosEmAberto: 0 },
+    { id: 'r3', nome: 'Jose Geraldo', codigo: 22, setor: 'Revenda', metaMensal: 50000, valorRealizado: 0, pedidosEmAberto: 0 },
+    { id: 'r4', nome: 'Fernanda', codigo: 63, setor: 'Revenda', metaMensal: 200000, valorRealizado: 0, pedidosEmAberto: 0 },
+    { id: 'r5', nome: 'Glaucia', codigo: 66, setor: 'Revenda', metaMensal: 50000, valorRealizado: 0, pedidosEmAberto: 0 },
   ],
   cozinhas: [
-    { id: 'i1', nome: 'Livia - Sodexo', codigo: 16, setor: 'Cozinhas Industriais', metaMensal: 450000, valorRealizado: 497186.19, pedidosEmAberto: 0 },
-    { id: 'i2', nome: 'Marcelo - GRSA', codigo: 17, setor: 'Cozinhas Industriais', metaMensal: 400000, valorRealizado: 257710.77, pedidosEmAberto: 0 },
-    { id: 'i3', nome: 'Sapore', codigo: 3, setor: 'Cozinhas Industriais', metaMensal: 340000, valorRealizado: 181960.57, pedidosEmAberto: 0 },
+    { id: 'i1', nome: 'Livia - Sodexo', codigo: 16, setor: 'Cozinhas Industriais', metaMensal: 450000, valorRealizado: 0, pedidosEmAberto: 0 },
+    { id: 'i2', nome: 'Marcelo - GRSA', codigo: 17, setor: 'Cozinhas Industriais', metaMensal: 400000, valorRealizado: 0, pedidosEmAberto: 0 },
+    { id: 'i3', nome: 'Sapore', codigo: 3, setor: 'Cozinhas Industriais', metaMensal: 340000, valorRealizado: 0, pedidosEmAberto: 0 },
   ],
 }
 
 export default function SalesAndBillingPage() {
+  // Estado do mês/ano selecionado
+  const [selectedYear, setSelectedYear] = useState<number>(() => getCurrentYearMonth().ano)
+  const [selectedMonth, setSelectedMonth] = useState<number>(() => getCurrentYearMonth().mes)
+
+  // Estado dos dados e UI
   const [activeTab, setActiveTab] = useState<ChannelKey>('consumo')
-  const [data, setData] = useState<ChannelState>(initialData)
+  const [data, setData] = useState<ChannelState>({ consumo: [], revenda: [], cozinhas: [] })
   const [modalOpen, setModalOpen] = useState(false)
   const [editUser, setEditUser] = useState<{ channel: ChannelKey; user: UserEntry | null }>({ channel: 'consumo', user: null })
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
 
+  // Mês atual para comparação
+  const currentYearMonth = useMemo(() => getCurrentYearMonth(), [])
+  const isCurrentMonth = selectedYear === currentYearMonth.ano && selectedMonth === currentYearMonth.mes
+
+  // Cálculos da tabela
   const { ranked, totals } = useSalesCalculations(data[activeTab])
 
+  // Label do canal ativo
   const channelLabel = useMemo(() => CHANNELS.find((c) => c.key === activeTab)?.label || 'Consumo', [activeTab])
 
-  const handleSaveUser = (payload: Omit<UserEntry, 'id'> & { valorRealizado: number; pedidosEmAberto: number }) => {
-    setData((prev) => {
-      const list = prev[activeTab]
-      if (editUser.user) {
-        return {
-          ...prev,
-          [activeTab]: list.map((u) =>
-            u.id === editUser.user?.id
-              ? {
-                  ...u,
-                  nome: payload.nome,
-                  codigo: payload.codigo,
-                  setor: payload.setor,
-                  metaMensal: payload.metaMensal,
-                  valorRealizado: payload.valorRealizado,
-                  pedidosEmAberto: payload.pedidosEmAberto,
-                }
-              : u
-          ),
+  // Carrega dados do mês selecionado
+  const loadMonthData = useCallback(async () => {
+    setLoading(true)
+    try {
+      let [consumo, revenda, cozinhas] = await Promise.all([
+        loadSalesData('consumo', selectedYear, selectedMonth),
+        loadSalesData('revenda', selectedYear, selectedMonth),
+        loadSalesData('cozinhas', selectedYear, selectedMonth),
+      ])
+
+      // Se é o mês atual e algum canal está vazio, inicializa com dados demo
+      if (isCurrentMonth) {
+        const promises: Promise<void>[] = []
+        
+        if (consumo.length === 0) {
+          promises.push(
+            saveAllSalesData(DEMO_DATA.consumo, 'consumo', selectedYear, selectedMonth)
+              .then(() => { consumo = DEMO_DATA.consumo })
+          )
+        }
+        if (revenda.length === 0) {
+          promises.push(
+            saveAllSalesData(DEMO_DATA.revenda, 'revenda', selectedYear, selectedMonth)
+              .then(() => { revenda = DEMO_DATA.revenda })
+          )
+        }
+        if (cozinhas.length === 0) {
+          promises.push(
+            saveAllSalesData(DEMO_DATA.cozinhas, 'cozinhas', selectedYear, selectedMonth)
+              .then(() => { cozinhas = DEMO_DATA.cozinhas })
+          )
+        }
+        
+        if (promises.length > 0) {
+          await Promise.all(promises)
         }
       }
-      const newUser: UserEntry = {
-        id: `${activeTab}-${Date.now()}`,
+
+      setData({ consumo, revenda, cozinhas })
+    } catch (err) {
+      console.error('Erro ao carregar dados:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [selectedYear, selectedMonth, isCurrentMonth])
+
+  // Carrega dados quando mês/ano muda
+  useEffect(() => {
+    loadMonthData()
+  }, [loadMonthData])
+
+  // Navega para mês anterior
+  const goToPreviousMonth = () => {
+    if (selectedMonth === 1) {
+      setSelectedMonth(12)
+      setSelectedYear((y) => y - 1)
+    } else {
+      setSelectedMonth((m) => m - 1)
+    }
+  }
+
+  // Navega para próximo mês
+  const goToNextMonth = () => {
+    if (selectedMonth === 12) {
+      setSelectedMonth(1)
+      setSelectedYear((y) => y + 1)
+    } else {
+      setSelectedMonth((m) => m + 1)
+    }
+  }
+
+  // Volta para mês atual
+  const goToCurrentMonth = () => {
+    setSelectedYear(currentYearMonth.ano)
+    setSelectedMonth(currentYearMonth.mes)
+  }
+
+  // Salva um usuário
+  const handleSaveUser = async (payload: Omit<UserEntry, 'id'> & { valorRealizado: number; pedidosEmAberto: number }) => {
+    setSaving(true)
+    try {
+      const isEditing = !!editUser.user
+      const userId = isEditing ? editUser.user!.id : `${activeTab}-${selectedYear}${selectedMonth}-${Date.now()}`
+      
+      const user: UserEntry = {
+        id: userId,
         nome: payload.nome,
         codigo: payload.codigo,
         setor: payload.setor,
@@ -82,14 +167,43 @@ export default function SalesAndBillingPage() {
         valorRealizado: payload.valorRealizado,
         pedidosEmAberto: payload.pedidosEmAberto,
       }
-      return { ...prev, [activeTab]: [...list, newUser] }
-    })
-    setModalOpen(false)
-    setEditUser({ channel: activeTab, user: null })
+
+      // Salva no banco
+      await saveSalesUser(user, activeTab, selectedYear, selectedMonth)
+
+      // Atualiza estado local
+      setData((prev) => {
+        const list = prev[activeTab]
+        if (isEditing) {
+          return {
+            ...prev,
+            [activeTab]: list.map((u) => (u.id === userId ? user : u)),
+          }
+        }
+        return { ...prev, [activeTab]: [...list, user] }
+      })
+    } catch (err) {
+      console.error('Erro ao salvar usuário:', err)
+    } finally {
+      setSaving(false)
+      setModalOpen(false)
+      setEditUser({ channel: activeTab, user: null })
+    }
   }
 
-  const handleDeleteUser = (id: string) => {
-    setData((prev) => ({ ...prev, [activeTab]: prev[activeTab].filter((u) => u.id !== id) }))
+  // Exclui um usuário
+  const handleDeleteUser = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir este usuário?')) return
+
+    setSaving(true)
+    try {
+      await deleteSalesUser(id, activeTab, selectedYear, selectedMonth)
+      setData((prev) => ({ ...prev, [activeTab]: prev[activeTab].filter((u) => u.id !== id) }))
+    } catch (err) {
+      console.error('Erro ao excluir usuário:', err)
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -106,21 +220,67 @@ export default function SalesAndBillingPage() {
               <p className="text-xs text-slate-500 dark:text-slate-400">Dashboard executivo de acompanhamento</p>
             </div>
           </div>
-          <button
-            onClick={() => {
-              setEditUser({ channel: activeTab, user: null })
-              setModalOpen(true)
-            }}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Plus className="h-4 w-4" />
-            Novo usuário
-          </button>
+
+          {/* Seletor de mês/ano */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-700 rounded-lg p-1">
+              <button
+                onClick={goToPreviousMonth}
+                className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-600 rounded transition-colors"
+                title="Mês anterior"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <div className="flex items-center gap-2 px-3 py-1">
+                <Calendar className="h-4 w-4 text-slate-500" />
+                <span className="text-sm font-medium min-w-[140px] text-center">
+                  {formatMonthYear(selectedYear, selectedMonth)}
+                </span>
+              </div>
+              <button
+                onClick={goToNextMonth}
+                className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-600 rounded transition-colors"
+                title="Próximo mês"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+
+            {!isCurrentMonth && (
+              <button
+                onClick={goToCurrentMonth}
+                className="px-3 py-2 text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+              >
+                Mês atual
+              </button>
+            )}
+
+            <button
+              onClick={() => {
+                setEditUser({ channel: activeTab, user: null })
+                setModalOpen(true)
+              }}
+              disabled={saving}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+            >
+              <Plus className="h-4 w-4" />
+              Novo usuário
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* Conteúdo principal - largura total */}
+      {/* Conteúdo principal */}
       <main className="w-full px-4 lg:px-6 py-4">
+        {/* Indicador de mês histórico */}
+        {!isCurrentMonth && (
+          <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+            <p className="text-sm text-amber-700 dark:text-amber-300">
+              <strong>Visualizando dados históricos:</strong> {formatMonthYear(selectedYear, selectedMonth)}
+            </p>
+          </div>
+        )}
+
         {/* Abas dos canais */}
         <div className="flex gap-2 mb-4">
           {CHANNELS.map((ch) => (
@@ -144,33 +304,63 @@ export default function SalesAndBillingPage() {
           <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
             <div>
               <h2 className="text-base font-semibold text-slate-900 dark:text-white">{channelLabel}</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Ranking por % realizado da meta</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Ranking por % realizado da meta • {formatMonthYear(selectedYear, selectedMonth)}
+              </p>
             </div>
-            <div className="text-xs text-slate-400 dark:text-slate-500">
-              {ranked.length} usuário{ranked.length !== 1 ? 's' : ''}
+            <div className="flex items-center gap-3">
+              {saving && (
+                <div className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Salvando...
+                </div>
+              )}
+              <div className="text-xs text-slate-400 dark:text-slate-500">
+                {ranked.length} usuário{ranked.length !== 1 ? 's' : ''}
+              </div>
             </div>
           </div>
 
-          {/* Tabela executiva - SEM overflow-x-auto */}
+          {/* Tabela */}
           <div className="w-full">
-            <table className="w-full" style={{ tableLayout: 'fixed' }}>
-              <TableHeaderGrouped />
-              <tbody>
-                {ranked.map((u, idx) => (
-                  <ChannelRow
-                    key={u.id}
-                    user={u}
-                    index={idx}
-                    onEdit={(user) => {
-                      setEditUser({ channel: activeTab, user })
-                      setModalOpen(true)
-                    }}
-                    onDelete={handleDeleteUser}
-                  />
-                ))}
-              </tbody>
-              <ChannelFooter totals={totals} />
-            </table>
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                <span className="ml-3 text-slate-500">Carregando dados...</span>
+              </div>
+            ) : ranked.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-slate-500">
+                <p className="mb-2">Nenhum usuário cadastrado para este mês.</p>
+                <button
+                  onClick={() => {
+                    setEditUser({ channel: activeTab, user: null })
+                    setModalOpen(true)
+                  }}
+                  className="text-blue-600 hover:underline"
+                >
+                  Adicionar primeiro usuário
+                </button>
+              </div>
+            ) : (
+              <table className="w-full" style={{ tableLayout: 'fixed' }}>
+                <TableHeaderGrouped />
+                <tbody>
+                  {ranked.map((u, idx) => (
+                    <ChannelRow
+                      key={u.id}
+                      user={u}
+                      index={idx}
+                      onEdit={(user) => {
+                        setEditUser({ channel: activeTab, user })
+                        setModalOpen(true)
+                      }}
+                      onDelete={handleDeleteUser}
+                    />
+                  ))}
+                </tbody>
+                <ChannelFooter totals={totals} />
+              </table>
+            )}
           </div>
         </div>
       </main>

@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Plus, Calendar, ChevronLeft, ChevronRight, Loader2, Shield, Sun, Moon } from 'lucide-react'
+import { ArrowLeft, Plus, Calendar, ChevronLeft, ChevronRight, Loader2, Shield, Sun, Moon, TrendingUp, TrendingDown, Target, DollarSign, Clock, BarChart3 } from 'lucide-react'
 import { ChannelName, UserEntry, useSalesCalculations } from '@/components/sales/useSalesCalculations'
 import { TableHeaderGrouped, ChannelRow, ChannelFooter, ChannelRowMobile, ChannelFooterMobile } from '@/components/sales/ChannelComponents'
 import { useIsMobile } from '@/hooks/useResponsive'
@@ -416,6 +416,141 @@ export default function SalesAndBillingPage() {
             <p className="text-sm text-blue-700 dark:text-blue-300">
               <span className="font-medium">Canal:</span> {availableChannels[0].label}
             </p>
+          </div>
+        )}
+
+        {/* KPI Dashboard - Desktop Only */}
+        {!isMobile && !loading && ranked.length > 0 && (
+          <div className="mb-6 grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* KPI 1: Meta Total */}
+            <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-5 text-white shadow-lg shadow-blue-600/20">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+              <div className="relative">
+                <div className="flex items-center gap-2 mb-2">
+                  <Target className="h-5 w-5 opacity-80" />
+                  <span className="text-sm font-medium opacity-90">Meta Total</span>
+                </div>
+                <p className="text-2xl lg:text-3xl font-bold">
+                  {totals.metaTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                </p>
+                <p className="text-xs opacity-75 mt-1">{channelLabel}</p>
+              </div>
+            </div>
+
+            {/* KPI 2: Realizado */}
+            <div className="relative overflow-hidden bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-5 text-white shadow-lg shadow-emerald-500/20">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+              <div className="relative">
+                <div className="flex items-center gap-2 mb-2">
+                  <DollarSign className="h-5 w-5 opacity-80" />
+                  <span className="text-sm font-medium opacity-90">Realizado</span>
+                </div>
+                <p className="text-2xl lg:text-3xl font-bold">
+                  {totals.valorRealizadoTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                </p>
+                <div className="flex items-center gap-1 mt-1">
+                  {totals.percentTotal >= 100 ? (
+                    <TrendingUp className="h-4 w-4" />
+                  ) : (
+                    <TrendingDown className="h-4 w-4 opacity-75" />
+                  )}
+                  <span className="text-sm font-semibold">{totals.percentTotal.toFixed(1)}%</span>
+                  <span className="text-xs opacity-75">da meta</span>
+                </div>
+              </div>
+            </div>
+
+            {/* KPI 3: Falta para Meta */}
+            <div className={`relative overflow-hidden rounded-xl p-5 text-white shadow-lg ${
+              totals.valorMetaRestanteTotal > 0 
+                ? 'bg-gradient-to-br from-amber-500 to-orange-500 shadow-amber-500/20' 
+                : 'bg-gradient-to-br from-emerald-500 to-teal-500 shadow-emerald-500/20'
+            }`}>
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+              <div className="relative">
+                <div className="flex items-center gap-2 mb-2">
+                  <Clock className="h-5 w-5 opacity-80" />
+                  <span className="text-sm font-medium opacity-90">Falta p/ Meta</span>
+                </div>
+                <p className="text-2xl lg:text-3xl font-bold">
+                  {totals.valorMetaRestanteTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                </p>
+                <p className="text-xs opacity-75 mt-1">
+                  {totals.valorDiaTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 })}/dia
+                </p>
+              </div>
+            </div>
+
+            {/* KPI 4: Fat. + Abertos */}
+            <div className="relative overflow-hidden bg-gradient-to-br from-violet-600 to-purple-600 rounded-xl p-5 text-white shadow-lg shadow-violet-600/20">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+              <div className="relative">
+                <div className="flex items-center gap-2 mb-2">
+                  <BarChart3 className="h-5 w-5 opacity-80" />
+                  <span className="text-sm font-medium opacity-90">Fat. + Abertos</span>
+                </div>
+                <p className="text-2xl lg:text-3xl font-bold">
+                  {totals.faturadosMaisAbertosTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                </p>
+                <div className="flex items-center gap-1 mt-1">
+                  <span className="text-sm font-semibold">
+                    {totals.metaTotal > 0 ? ((totals.faturadosMaisAbertosTotal / totals.metaTotal) * 100).toFixed(1) : 0}%
+                  </span>
+                  <span className="text-xs opacity-75">potencial</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Barra de Progresso Global - Desktop Only */}
+        {!isMobile && !loading && ranked.length > 0 && (
+          <div className="mb-6 bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Progresso do Mês - {channelLabel}</h3>
+              <span className={`text-sm font-bold ${
+                totals.percentTotal >= 100 ? 'text-emerald-600 dark:text-emerald-400' : 
+                totals.percentTotal >= 70 ? 'text-amber-600 dark:text-amber-400' : 
+                'text-red-600 dark:text-red-400'
+              }`}>
+                {totals.percentTotal.toFixed(1)}% realizado
+              </span>
+            </div>
+            <div className="relative h-4 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+              {/* Barra de realizado */}
+              <div 
+                className={`absolute left-0 top-0 h-full transition-all duration-500 ${
+                  totals.percentTotal >= 100 ? 'bg-gradient-to-r from-emerald-500 to-emerald-400' : 
+                  totals.percentTotal >= 70 ? 'bg-gradient-to-r from-amber-500 to-amber-400' : 
+                  'bg-gradient-to-r from-red-500 to-red-400'
+                }`}
+                style={{ width: `${Math.min(totals.percentTotal, 100)}%` }}
+              />
+              {/* Barra de potencial (fat + abertos) */}
+              {totals.metaTotal > 0 && totals.faturadosMaisAbertosTotal > totals.valorRealizadoTotal && (
+                <div 
+                  className="absolute top-0 h-full bg-violet-400/50 dark:bg-violet-500/40"
+                  style={{ 
+                    left: `${Math.min(totals.percentTotal, 100)}%`,
+                    width: `${Math.min(((totals.faturadosMaisAbertosTotal - totals.valorRealizadoTotal) / totals.metaTotal) * 100, 100 - totals.percentTotal)}%` 
+                  }}
+                />
+              )}
+              {/* Marcador de 100% */}
+              <div className="absolute left-[100%] top-0 h-full w-0.5 bg-slate-400 dark:bg-slate-500 -translate-x-1/2" />
+            </div>
+            <div className="flex justify-between mt-2 text-xs text-slate-500 dark:text-slate-400">
+              <span>0%</span>
+              <div className="flex items-center gap-4">
+                <span className="flex items-center gap-1">
+                  <span className="w-3 h-3 rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400" /> Realizado
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-3 h-3 rounded-full bg-violet-400/50" /> Em Aberto
+                </span>
+              </div>
+              <span>100%</span>
+            </div>
           </div>
         )}
 

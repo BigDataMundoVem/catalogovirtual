@@ -140,9 +140,9 @@ export default function HomePage() {
                       </Link>
                     )}
 
-          {/* Card Vendas */}
+          {/* Card Vendas & Faturamento */}
           <Link 
-            href="/vendas"
+            href="/sales-and-billing"
             className="group relative overflow-hidden bg-white dark:bg-gray-800 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 border border-gray-100 dark:border-gray-700 flex flex-col items-center justify-center p-8 sm:p-12 text-center h-64 sm:h-80"
           >
             <div className="absolute inset-0 bg-gradient-to-br from-purple-50 to-transparent dark:from-purple-900/20 dark:to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -151,7 +151,7 @@ export default function HomePage() {
                 <FileSpreadsheet className="h-10 w-10" />
               </div>
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Vendas &amp; Faturamento</h2>
-              <p className="text-gray-500 dark:text-gray-400">Lance pedidos, faturado e acompanhe o saldo a faturar.</p>
+              <p className="text-gray-500 dark:text-gray-400">Consumo, Revenda e Cozinhas Industriais em uma única visão.</p>
             </div>
           </Link>
         </div>

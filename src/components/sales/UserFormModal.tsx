@@ -9,21 +9,49 @@ interface UserFormModalProps {
   channel: ChannelName
 }
 
+// Funções auxiliares para formatação de valores monetários
+const formatCurrency = (value: number): string => {
+  return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+const parseCurrency = (value: string): number => {
+  if (!value) return 0
+  // Remove pontos (separadores de milhar) e substitui vírgula por ponto
+  const cleaned = value.replace(/\./g, '').replace(',', '.')
+  const num = parseFloat(cleaned || '0')
+  return isNaN(num) ? 0 : num
+}
+
+// Formata valor enquanto digita (formato brasileiro: 1.234,56)
+const handleCurrencyInput = (value: string): string => {
+  if (!value) return ''
+  
+  // Remove tudo exceto números
+  const numbers = value.replace(/\D/g, '')
+  if (!numbers) return ''
+  
+  // Converte para número e divide por 100 para ter centavos
+  const num = parseInt(numbers, 10) / 100
+  
+  // Formata com separador de milhar e 2 casas decimais
+  return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
 export const UserFormModal: React.FC<UserFormModalProps> = ({ open, onClose, onSave, initial, channel }) => {
   const [nome, setNome] = React.useState(initial?.nome || '')
   const [codigo, setCodigo] = React.useState(String(initial?.codigo ?? ''))
   const [setor, setSetor] = React.useState<ChannelName>(initial?.setor || channel)
-  const [metaMensal, setMetaMensal] = React.useState(String(initial?.metaMensal ?? '0'))
-  const [valorRealizado, setValorRealizado] = React.useState(String(initial?.valorRealizado ?? '0'))
-  const [pedidosEmAberto, setPedidosEmAberto] = React.useState(String(initial?.pedidosEmAberto ?? '0'))
+  const [metaMensal, setMetaMensal] = React.useState(formatCurrency(initial?.metaMensal ?? 0))
+  const [valorRealizado, setValorRealizado] = React.useState(formatCurrency(initial?.valorRealizado ?? 0))
+  const [pedidosEmAberto, setPedidosEmAberto] = React.useState(formatCurrency(initial?.pedidosEmAberto ?? 0))
 
   React.useEffect(() => {
     setNome(initial?.nome || '')
     setCodigo(String(initial?.codigo ?? ''))
     setSetor(initial?.setor || channel)
-    setMetaMensal(String(initial?.metaMensal ?? '0'))
-    setValorRealizado(String(initial?.valorRealizado ?? '0'))
-    setPedidosEmAberto(String(initial?.pedidosEmAberto ?? '0'))
+    setMetaMensal(formatCurrency(initial?.metaMensal ?? 0))
+    setValorRealizado(formatCurrency(initial?.valorRealizado ?? 0))
+    setPedidosEmAberto(formatCurrency(initial?.pedidosEmAberto ?? 0))
   }, [initial, channel])
 
   if (!open) return null
@@ -66,33 +94,51 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ open, onClose, onS
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Meta Mensal (R$)</label>
             <input
-              type="number"
-              min="0"
-              step="0.01"
+              type="text"
               value={metaMensal}
-              onChange={(e) => setMetaMensal(e.target.value)}
+              onChange={(e) => {
+                const formatted = handleCurrencyInput(e.target.value)
+                setMetaMensal(formatted)
+              }}
+              onBlur={(e) => {
+                const num = parseCurrency(e.target.value)
+                setMetaMensal(formatCurrency(num))
+              }}
+              placeholder="0,00"
               className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Valor Realizado (R$)</label>
             <input
-              type="number"
-              min="0"
-              step="0.01"
+              type="text"
               value={valorRealizado}
-              onChange={(e) => setValorRealizado(e.target.value)}
+              onChange={(e) => {
+                const formatted = handleCurrencyInput(e.target.value)
+                setValorRealizado(formatted)
+              }}
+              onBlur={(e) => {
+                const num = parseCurrency(e.target.value)
+                setValorRealizado(formatCurrency(num))
+              }}
+              placeholder="0,00"
               className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Pedidos em Aberto (R$)</label>
             <input
-              type="number"
-              min="0"
-              step="0.01"
+              type="text"
               value={pedidosEmAberto}
-              onChange={(e) => setPedidosEmAberto(e.target.value)}
+              onChange={(e) => {
+                const formatted = handleCurrencyInput(e.target.value)
+                setPedidosEmAberto(formatted)
+              }}
+              onBlur={(e) => {
+                const num = parseCurrency(e.target.value)
+                setPedidosEmAberto(formatCurrency(num))
+              }}
+              placeholder="0,00"
               className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             />
           </div>
@@ -106,9 +152,9 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ open, onClose, onS
                 nome,
                 codigo,
                 setor,
-                metaMensal: parseFloat(metaMensal || '0'),
-                valorRealizado: parseFloat(valorRealizado || '0'),
-                pedidosEmAberto: parseFloat(pedidosEmAberto || '0'),
+                metaMensal: parseCurrency(metaMensal),
+                valorRealizado: parseCurrency(valorRealizado),
+                pedidosEmAberto: parseCurrency(pedidosEmAberto),
               })
             }
             className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"

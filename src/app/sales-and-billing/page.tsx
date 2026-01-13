@@ -2,10 +2,12 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Plus, Calendar, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { ArrowLeft, Plus, Calendar, ChevronLeft, ChevronRight, Loader2, Shield } from 'lucide-react'
 import { ChannelName, UserEntry, useSalesCalculations } from '@/components/sales/useSalesCalculations'
 import { TableHeaderGrouped, ChannelRow, ChannelFooter } from '@/components/sales/ChannelComponents'
 import { UserFormModal } from '@/components/sales/UserFormModal'
+import { isAuthenticated, isAdmin } from '@/lib/auth'
 import {
   loadSalesData,
   saveSalesUser,
@@ -52,6 +54,8 @@ const DEMO_DATA: ChannelState = {
 }
 
 export default function SalesAndBillingPage() {
+  const router = useRouter()
+  
   // Estado do mês/ano selecionado
   const [selectedYear, setSelectedYear] = useState<number>(() => getCurrentYearMonth().ano)
   const [selectedMonth, setSelectedMonth] = useState<number>(() => getCurrentYearMonth().mes)
@@ -63,6 +67,8 @@ export default function SalesAndBillingPage() {
   const [editUser, setEditUser] = useState<{ channel: ChannelKey; user: UserEntry | null }>({ channel: 'consumo', user: null })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [userIsAdmin, setUserIsAdmin] = useState(false)
+  const [mounted, setMounted] = useState(false)
 
   // Mês atual para comparação
   const currentYearMonth = useMemo(() => getCurrentYearMonth(), [])
@@ -73,6 +79,22 @@ export default function SalesAndBillingPage() {
 
   // Label do canal ativo
   const channelLabel = useMemo(() => CHANNELS.find((c) => c.key === activeTab)?.label || 'Consumo', [activeTab])
+
+  // Verifica autenticação e permissões
+  useEffect(() => {
+    const checkAuth = async () => {
+      const authenticated = await isAuthenticated()
+      if (!authenticated) {
+        router.push('/login')
+        return
+      }
+      
+      const adminStatus = await isAdmin()
+      setUserIsAdmin(adminStatus)
+      setMounted(true)
+    }
+    checkAuth()
+  }, [router])
 
   // Carrega dados do mês selecionado
   const loadMonthData = useCallback(async () => {
@@ -153,6 +175,11 @@ export default function SalesAndBillingPage() {
 
   // Salva um usuário
   const handleSaveUser = async (payload: Omit<UserEntry, 'id'> & { valorRealizado: number; pedidosEmAberto: number }) => {
+    if (!userIsAdmin) {
+      console.warn('Apenas administradores podem editar dados')
+      return
+    }
+    
     setSaving(true)
     try {
       const isEditing = !!editUser.user
@@ -193,6 +220,11 @@ export default function SalesAndBillingPage() {
 
   // Exclui um usuário
   const handleDeleteUser = async (id: string) => {
+    if (!userIsAdmin) {
+      console.warn('Apenas administradores podem excluir dados')
+      return
+    }
+    
     if (!confirm('Tem certeza que deseja excluir este usuário?')) return
 
     setSaving(true)
@@ -204,6 +236,14 @@ export default function SalesAndBillingPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      </div>
+    )
   }
 
   return (
@@ -255,23 +295,35 @@ export default function SalesAndBillingPage() {
               </button>
             )}
 
-            <button
-              onClick={() => {
-                setEditUser({ channel: activeTab, user: null })
-                setModalOpen(true)
-              }}
-              disabled={saving}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-            >
-              <Plus className="h-4 w-4" />
-              Novo usuário
-            </button>
+            {userIsAdmin && (
+              <button
+                onClick={() => {
+                  setEditUser({ channel: activeTab, user: null })
+                  setModalOpen(true)
+                }}
+                disabled={saving}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              >
+                <Plus className="h-4 w-4" />
+                Novo usuário
+              </button>
+            )}
           </div>
         </div>
       </header>
 
       {/* Conteúdo principal */}
       <main className="w-full px-4 lg:px-6 py-4">
+        {/* Aviso para não-admins */}
+        {!userIsAdmin && (
+          <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center gap-2">
+            <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <p className="text-sm text-blue-700 dark:text-blue-300">
+              <strong>Modo visualização:</strong> Apenas administradores podem editar os dados de vendas e faturamento.
+            </p>
+          </div>
+        )}
+
         {/* Indicador de mês histórico */}
         {!isCurrentMonth && (
           <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
@@ -355,6 +407,7 @@ export default function SalesAndBillingPage() {
                         setModalOpen(true)
                       }}
                       onDelete={handleDeleteUser}
+                      userIsAdmin={userIsAdmin}
                     />
                   ))}
                 </tbody>

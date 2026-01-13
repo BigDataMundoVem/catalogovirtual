@@ -128,9 +128,10 @@ interface RowProps {
   index: number
   onEdit: (user: CalculatedUser) => void
   onDelete: (id: string) => void
+  userIsAdmin?: boolean
 }
 
-export const ChannelRow: React.FC<RowProps> = ({ user, index, onEdit, onDelete }) => {
+export const ChannelRow: React.FC<RowProps> = ({ user, index, onEdit, onDelete, userIsAdmin = false }) => {
   const [expanded, setExpanded] = useState(false)
   
   // Cores para valores de "falta" (vermelho se positivo, verde se zero/negativo)
@@ -193,20 +194,24 @@ export const ChannelRow: React.FC<RowProps> = ({ user, index, onEdit, onDelete }
         {/* Ações */}
         <td style={{ width: COL_WIDTHS.acoes }} className="px-2 py-3 text-center whitespace-nowrap">
           <div className="flex items-center justify-center gap-1">
-            <button
-              onClick={() => onEdit(user)}
-              className="p-1 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
-              title="Editar"
-            >
-              <Pencil className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={() => onDelete(user.id)}
-              className="p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
-              title="Excluir"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
+            {userIsAdmin && (
+              <>
+                <button
+                  onClick={() => onEdit(user)}
+                  className="p-1 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
+                  title="Editar"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  onClick={() => onDelete(user.id)}
+                  className="p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
+                  title="Excluir"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </>
+            )}
             <button
               onClick={() => setExpanded((v) => !v)}
               className="p-1 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors"

@@ -52,7 +52,7 @@ export default function SalesAndBillingPage() {
 
   const channelLabel = useMemo(() => CHANNELS.find((c) => c.key === activeTab)?.label || 'Consumo', [activeTab])
 
-  const handleSaveUser = (payload: Omit<UserEntry, 'id' | 'valorRealizado' | 'pedidosEmAberto'> & { valorRealizado?: number; pedidosEmAberto?: number }) => {
+  const handleSaveUser = (payload: Omit<UserEntry, 'id'> & { valorRealizado: number; pedidosEmAberto: number }) => {
     setData((prev) => {
       const list = prev[activeTab]
       if (editUser.user) {
@@ -66,8 +66,8 @@ export default function SalesAndBillingPage() {
                   codigo: payload.codigo,
                   setor: payload.setor,
                   metaMensal: payload.metaMensal,
-                  valorRealizado: payload.valorRealizado ?? u.valorRealizado,
-                  pedidosEmAberto: payload.pedidosEmAberto ?? u.pedidosEmAberto,
+                  valorRealizado: payload.valorRealizado,
+                  pedidosEmAberto: payload.pedidosEmAberto,
                 }
               : u
           ),
@@ -79,8 +79,8 @@ export default function SalesAndBillingPage() {
         codigo: payload.codigo,
         setor: payload.setor,
         metaMensal: payload.metaMensal,
-        valorRealizado: payload.valorRealizado ?? 0,
-        pedidosEmAberto: payload.pedidosEmAberto ?? 0,
+        valorRealizado: payload.valorRealizado,
+        pedidosEmAberto: payload.pedidosEmAberto,
       }
       return { ...prev, [activeTab]: [...list, newUser] }
     })
@@ -93,16 +93,17 @@ export default function SalesAndBillingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white">
-      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white">
+      {/* Header fixo */}
+      <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-20">
+        <div className="w-full px-4 lg:px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link href="/" className="p-2 -ml-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-              <ArrowLeft className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+            <Link href="/" className="p-2 -ml-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
+              <ArrowLeft className="h-5 w-5 text-slate-500 dark:text-slate-400" />
             </Link>
             <div>
-              <h1 className="text-xl font-bold">Vendas &amp; Faturamento</h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Três canais fixos: Consumo, Revenda e Cozinhas Industriais.</p>
+              <h1 className="text-lg font-bold">Vendas &amp; Faturamento</h1>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Dashboard executivo de acompanhamento</p>
             </div>
           </div>
           <button
@@ -110,7 +111,7 @@ export default function SalesAndBillingPage() {
               setEditUser({ channel: activeTab, user: null })
               setModalOpen(true)
             }}
-            className="inline-flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
           >
             <Plus className="h-4 w-4" />
             Novo usuário
@@ -118,32 +119,41 @@ export default function SalesAndBillingPage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="flex gap-2 mb-4 flex-wrap">
+      {/* Conteúdo principal - largura total */}
+      <main className="w-full px-4 lg:px-6 py-4">
+        {/* Abas dos canais */}
+        <div className="flex gap-2 mb-4">
           {CHANNELS.map((ch) => (
             <button
               key={ch.key}
               onClick={() => setActiveTab(ch.key)}
-              className={`px-4 py-2 rounded-lg border ${activeTab === ch.key ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-700'}`}
+              className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
+                activeTab === ch.key
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+              }`}
             >
               {ch.label}
             </button>
           ))}
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+        {/* Card da tabela */}
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+          {/* Cabeçalho do card */}
+          <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{channelLabel}</h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Gestão de usuários e metas do canal.</p>
+              <h2 className="text-base font-semibold text-slate-900 dark:text-white">{channelLabel}</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Ranking por % realizado da meta</p>
             </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">
-              Ranking diário ordenado pelo % realizado
+            <div className="text-xs text-slate-400 dark:text-slate-500">
+              {ranked.length} usuário{ranked.length !== 1 ? 's' : ''}
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="min-w-full">
+          {/* Tabela executiva - SEM overflow-x-auto */}
+          <div className="w-full">
+            <table className="w-full" style={{ tableLayout: 'fixed' }}>
               <TableHeaderGrouped />
               <tbody>
                 {ranked.map((u, idx) => (
@@ -165,23 +175,17 @@ export default function SalesAndBillingPage() {
         </div>
       </main>
 
+      {/* Modal de criação/edição */}
       <UserFormModal
         open={modalOpen}
         onClose={() => {
           setModalOpen(false)
           setEditUser({ channel: activeTab, user: null })
         }}
-        onSave={(data) =>
-          handleSaveUser({
-            ...data,
-            valorRealizado: data.metaMensal ? Number(data.metaMensal) * 0.0 : 0,
-            pedidosEmAberto: data.pedidosEmAberto ?? 0,
-          })
-        }
+        onSave={handleSaveUser}
         initial={editUser.user}
         channel={channelLabel}
       />
     </div>
   )
 }
-

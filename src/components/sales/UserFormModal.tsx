@@ -4,7 +4,7 @@ import { ChannelName, UserEntry } from './useSalesCalculations'
 interface UserFormModalProps {
   open: boolean
   onClose: () => void
-  onSave: (data: Omit<UserEntry, 'id' | 'valorRealizado' | 'pedidosEmAberto'>) => void
+  onSave: (data: Omit<UserEntry, 'id'> & { valorRealizado: number; pedidosEmAberto: number }) => void
   initial?: UserEntry | null
   channel: ChannelName
 }

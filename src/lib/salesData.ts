@@ -296,30 +296,39 @@ export async function deleteSalesUser(
   ano: number,
   mes: number
 ): Promise<boolean> {
+  console.log(`[SalesData] Excluindo usuário: userId=${userId}, canal=${canal}, ano=${ano}, mes=${mes}`)
+  
   if (!isSupabaseConfigured || !supabase) {
+    console.log('[SalesData] Usando localStorage (fallback)')
     const data = getLocalData()
     const key = getLocalKey(canal, ano, mes)
+    const beforeCount = (data[key] || []).length
     data[key] = (data[key] || []).filter((r) => r.user_id !== userId)
+    const afterCount = data[key].length
     setLocalData(data)
+    console.log(`[SalesData] Excluído do localStorage: ${beforeCount} -> ${afterCount} registros`)
     return true
   }
 
   try {
-    const { error } = await salesTable()
+    console.log('[SalesData] Excluindo do Supabase...')
+    const { data: deletedData, error } = await salesTable()
       .delete()
       .eq('user_id', userId)
       .eq('canal', canal)
       .eq('ano', ano)
       .eq('mes', mes)
+      .select()
 
     if (error) {
-      console.error('Erro ao excluir usuário:', error)
+      console.error('[SalesData] Erro ao excluir do Supabase:', error)
       return false
     }
 
+    console.log(`[SalesData] Excluído com sucesso do Supabase. Registros removidos: ${deletedData?.length || 0}`)
     return true
   } catch (err) {
-    console.error('Erro ao excluir usuário:', err)
+    console.error('[SalesData] Erro ao excluir usuário:', err)
     return false
   }
 }

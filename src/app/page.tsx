@@ -134,8 +134,8 @@ export default function HomePage() {
                           <div className="w-20 h-20 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center mb-6 text-green-600 dark:text-green-400 group-hover:scale-110 transition-transform duration-300">      
                             <Target className="h-10 w-10" />
                           </div>
-                          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Metas do Mês</h2>
-                          <p className="text-gray-500 dark:text-gray-400">Acompanhe seu desempenho mensal, KPIs e lance sua produção diária.</p>
+                          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Acompanhamento</h2>
+                          <p className="text-gray-500 dark:text-gray-400">Contatos, Orçamentos e Pedidos</p>
                         </div>
                       </Link>
                     )}

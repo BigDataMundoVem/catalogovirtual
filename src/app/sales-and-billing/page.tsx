@@ -222,6 +222,7 @@ export default function SalesAndBillingPage() {
   const handleDeleteUser = async (id: string) => {
     if (!userIsAdmin) {
       console.warn('Apenas administradores podem excluir dados')
+      alert('Apenas administradores podem excluir usuários.')
       return
     }
     
@@ -229,10 +230,19 @@ export default function SalesAndBillingPage() {
 
     setSaving(true)
     try {
-      await deleteSalesUser(id, activeTab, selectedYear, selectedMonth)
-      setData((prev) => ({ ...prev, [activeTab]: prev[activeTab].filter((u) => u.id !== id) }))
+      const success = await deleteSalesUser(id, activeTab, selectedYear, selectedMonth)
+      
+      if (success) {
+        // Atualiza o estado local apenas se a exclusão no banco foi bem-sucedida
+        setData((prev) => ({ ...prev, [activeTab]: prev[activeTab].filter((u) => u.id !== id) }))
+        console.log('Usuário excluído com sucesso do Supabase')
+      } else {
+        alert('Erro ao excluir usuário. Verifique o console para mais detalhes.')
+        console.error('Falha ao excluir usuário do Supabase')
+      }
     } catch (err) {
       console.error('Erro ao excluir usuário:', err)
+      alert('Erro ao excluir usuário. Tente novamente.')
     } finally {
       setSaving(false)
     }

@@ -11,8 +11,9 @@ const DEFAULT_ADMIN_USER = 'admin'
 const DEFAULT_ADMIN_PASS = 'admin123'
 const DEFAULT_VIEWER_USER = 'viewer'
 const DEFAULT_VIEWER_PASS = 'viewer123'
+const FALLBACK_ADMIN_EMAILS = ['bigdata3@mundovem.com.be']
 
-export type UserRole = 'admin' | 'viewer'
+export type UserRole = 'admin' | 'viewer' | 'blocked'
 
 interface LocalCredentials {
   username: string
@@ -69,16 +70,39 @@ async function recordSupabaseLogin(user: User) {
   }
 }
 
-async function getUserRole(userId: string): Promise<UserRole> {
+async function getUserRole(userId: string, email?: string | null): Promise<UserRole> {
   if (!supabase) return 'viewer'
 
-  const { data } = await (supabase as any)
+  // 1) Tenta profiles.role (onde costumamos guardar o papel)
+  const { data: profileData, error: profileError } = await (supabase as any)
+    .from('profiles')
+    .select('role')
+    .eq('id', userId)
+    .single()
+    .throwOnError(false)
+
+  if (profileData?.role) return profileData.role as UserRole
+
+  // 2) Tenta user_roles.role como fallback
+  const { data: roleData, error: roleError } = await (supabase as any)
     .from('user_roles')
     .select('role')
     .eq('user_id', userId)
     .single()
+    .throwOnError(false)
 
-  return (data?.role as UserRole) || 'viewer'
+  if (roleData?.role) return roleData.role as UserRole
+
+  // Ignora erros de "no rows" (PGRST116) e retorna viewer por padrão
+  if (profileError && profileError.code !== 'PGRST116') {
+    console.error('Error fetching profile role:', profileError)
+  }
+  if (roleError && roleError.code !== 'PGRST116') {
+    console.error('Error fetching user role:', roleError)
+  }
+
+  if (email && FALLBACK_ADMIN_EMAILS.includes(email)) return 'admin'
+  return 'viewer'
 }
 
 // ============ EXPORTED FUNCTIONS ============
@@ -111,7 +135,11 @@ export async function login(emailOrUsername: string, password: string): Promise<
 
   if (data.user) {
     await recordSupabaseLogin(data.user)
-    const role = await getUserRole(data.user.id)
+    const role = await getUserRole(data.user.id, data.user.email)
+    if (role === 'blocked') {
+      await supabase!.auth.signOut()
+      return { success: false, error: 'Usuário bloqueado, contate o administrador.' }
+    }
     return { success: true, role }
   }
 
@@ -152,7 +180,8 @@ export async function getCurrentRole(): Promise<UserRole | null> {
   const { data: { user } } = await supabase!.auth.getUser()
   if (!user) return null
 
-  return await getUserRole(user.id)
+  const role = await getUserRole(user.id, user.email)
+  return role
 }
 
 // Check if user is admin
@@ -328,6 +357,99 @@ export async function getUsers(): Promise<{ id: string; email: string; role: 'ad
     full_name: profile.full_name || null,
     is_sales_active: profile.is_sales_active ?? null
   }))
+}
+
+// Bloqueia/desbloqueia usuário (admin)
+export async function blockUser(userId: string, blocked: boolean): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured) {
+    return { success: false, error: 'Supabase não configurado para bloquear usuário' }
+  }
+  try {
+    const newRole: UserRole = blocked ? 'blocked' : 'viewer'
+
+    const { error: roleError } = await (supabase as any)
+      .from('user_roles')
+      .upsert({ user_id: userId, role: newRole }, { onConflict: 'user_id' })
+    if (roleError) throw roleError
+
+    const { error: profileError } = await (supabase as any)
+      .from('profiles')
+      .update({
+        role: newRole,
+        is_sales_active: blocked ? false : undefined
+      })
+      .eq('id', userId)
+    if (profileError) throw profileError
+
+    return { success: true }
+  } catch (error: any) {
+    console.error('Error blocking user:', error)
+    return { success: false, error: error?.message || 'Erro ao bloquear usuário' }
+  }
+}
+
+// Atualiza nome, role e participação em metas
+export async function updateUserProfile(
+  userId: string,
+  params: { role?: UserRole; fullName?: string; isSalesActive?: boolean }
+): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured) {
+    return { success: false, error: 'Supabase não configurado para edição de usuário' }
+  }
+  try {
+    if (params.role) {
+      const { error: roleError } = await (supabase as any)
+        .from('user_roles')
+        .upsert({ user_id: userId, role: params.role }, { onConflict: 'user_id' })
+      if (roleError) throw roleError
+    }
+
+    if (params.fullName !== undefined || params.isSalesActive !== undefined) {
+      const payload: any = {}
+      if (params.fullName !== undefined) payload.full_name = params.fullName
+      if (params.isSalesActive !== undefined) payload.is_sales_active = params.isSalesActive
+
+      const { error: profileError } = await (supabase as any)
+        .from('profiles')
+        .update(payload)
+        .eq('id', userId)
+      if (profileError) throw profileError
+    }
+
+    return { success: true }
+  } catch (error: any) {
+    console.error('Error updating user profile:', error)
+    return { success: false, error: error?.message || 'Erro ao atualizar usuário' }
+  }
+}
+
+// Exclui perfil/role (não remove auth.user)
+export async function deleteUserProfile(userId: string): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured) {
+    return { success: false, error: 'Supabase não configurado para exclusão de usuário' }
+  }
+  try {
+    // limpa metas e logs para não aparecer em dashboards
+    await (supabase as any).from('performance_logs').delete().eq('user_id', userId)
+    await (supabase as any).from('monthly_goals').delete().eq('user_id', userId)
+
+    const { error: roleError } = await (supabase as any)
+      .from('user_roles')
+      .delete()
+      .eq('user_id', userId)
+    if (roleError) throw roleError
+
+    const { error: profileError } = await (supabase as any)
+      .from('profiles')
+      .delete()
+      .eq('id', userId)
+    if (profileError) throw profileError
+
+    return { success: true }
+  } catch (error: any) {
+    console.error('Error deleting user profile:', error)
+    return { success: false, error: error?.message || 'Erro ao excluir usuário' }
+  }
 }
 
 // Auth state change listener

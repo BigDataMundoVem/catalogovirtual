@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase, isSupabaseConfigured, uploadImage, deleteImage } from '@/lib/supabase'
-import { isAuthenticated, isAdmin, logout, getCurrentUser, updatePassword, createUser, getLoginHistory, isLocalMode, getUsers } from '@/lib/auth'
+import { isAuthenticated, isAdmin, logout, getCurrentUser, updatePassword, createUser, getLoginHistory, isLocalMode, getUsers, updateUserProfile, deleteUserProfile, blockUser } from '@/lib/auth'
 import { getMonthlyGoal, setMonthlyGoal } from '@/lib/goals'
 import {
   Plus, Pencil, Trash2, X, Package, ArrowLeft, Save,
@@ -78,8 +78,12 @@ export default function AdminPage() {
   const [categoryForm, setCategoryForm] = useState({ name: '' })
 
   // User Modal
-  const [newUserForm, setNewUserForm] = useState({ email: '', password: '', confirmPassword: '', role: 'viewer' as 'admin' | 'viewer', name: '', isSalesActive: true })
+  const [newUserForm, setNewUserForm] = useState({ email: '', password: '', confirmPassword: '', role: 'viewer' as 'admin' | 'viewer' | 'blocked', name: '', isSalesActive: true })
   const [userMessage, setUserMessage] = useState({ type: '', text: '' })
+  const [editUserModal, setEditUserModal] = useState<{ open: boolean; user: UserData | null }>({ open: false, user: null })
+  const [editForm, setEditForm] = useState({ name: '', role: 'viewer' as 'admin' | 'viewer' | 'blocked', isSalesActive: true })
+  const [editMessage, setEditMessage] = useState<{ type: '' | 'error' | 'success'; text: string }>({ type: '', text: '' })
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null)
 
   // Goals Modal
   const [isGoalModalOpen, setIsGoalModalOpen] = useState(false)
@@ -130,6 +134,12 @@ export default function AdminPage() {
     init()
   }, [router])
 
+  useEffect(() => {
+    if (activeTab === 'users' || activeTab === 'goals') {
+      loadUsers()
+    }
+  }, [activeTab])
+
   const loadData = async () => {
     if (isSupabaseConfigured && supabase) {
       // Load from Supabase
@@ -157,6 +167,61 @@ export default function AdminPage() {
   const loadUsers = async () => {
     const fetchedUsers = await getUsers()
     setUsers(fetchedUsers)
+  }
+
+  const openEditUser = (user: UserData) => {
+    setEditUserModal({ open: true, user })
+    setEditForm({
+      name: user.full_name || '',
+      role: user.role,
+      isSalesActive: user.is_sales_active ?? true
+    })
+    setEditMessage({ type: '', text: '' })
+  }
+
+  const handleSaveEditUser = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editUserModal.user) return
+    setEditMessage({ type: '', text: '' })
+
+    const result = await updateUserProfile(editUserModal.user.id, {
+      role: editForm.role,
+      fullName: editForm.name,
+      isSalesActive: editForm.isSalesActive
+    })
+
+    if (result.success) {
+      setEditMessage({ type: 'success', text: 'Usuário atualizado!' })
+      await loadUsers()
+      setTimeout(() => setEditUserModal({ open: false, user: null }), 600)
+    } else {
+      setEditMessage({ type: 'error', text: result.error || 'Erro ao atualizar usuário' })
+    }
+  }
+
+  const handleDeleteUser = async (user: UserData) => {
+    if (!confirm(`Deseja excluir o usuário ${user.email || user.id}? Esta ação remove o perfil e a role, mas não exclui o auth user (requer service role).`)) {
+      return
+    }
+    setDeletingUserId(user.id)
+    const result = await deleteUserProfile(user.id)
+    setDeletingUserId(null)
+    if (!result.success) {
+      alert(result.error || 'Erro ao excluir usuário')
+      return
+    }
+    await loadUsers()
+  }
+
+  const handleToggleBlockUser = async (user: UserData) => {
+    const blocked = user.role !== 'blocked'
+    if (!confirm(`${blocked ? 'Bloquear' : 'Desbloquear'} o usuário ${user.email || user.id}?`)) return
+    const result = await blockUser(user.id, blocked)
+    if (!result.success) {
+      alert(result.error || 'Erro ao atualizar bloqueio')
+      return
+    }
+    await loadUsers()
   }
 
   const saveLocalData = (prods: Product[], cats: Category[]) => {
@@ -547,16 +612,12 @@ export default function AdminPage() {
           <button onClick={() => setActiveTab('categories')} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${activeTab === 'categories' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
             <FolderOpen className="h-5 w-5" /><span>Famílias ({categories.length})</span>
           </button>
-          {!usingLocalMode && (
-            <>
-              <button onClick={() => { setActiveTab('users'); loadUsers(); }} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${activeTab === 'users' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
-                <Users className="h-5 w-5" /><span>Usuários</span>
-              </button>
-              <button onClick={() => { setActiveTab('goals'); loadUsers(); }} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${activeTab === 'goals' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
-                <Target className="h-5 w-5" /><span>Metas</span>
-              </button>
-            </>
-          )}
+          <button onClick={() => { setActiveTab('users'); loadUsers(); }} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${activeTab === 'users' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+            <Users className="h-5 w-5" /><span>Usuários</span>
+          </button>
+          <button onClick={() => { setActiveTab('goals'); loadUsers(); }} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${activeTab === 'goals' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+            <Target className="h-5 w-5" /><span>Metas</span>
+          </button>
           <button onClick={() => { setActiveTab('history'); loadLoginHistory() }} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${activeTab === 'history' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
             <History className="h-5 w-5" /><span>Histórico</span>
           </button>
@@ -675,32 +736,39 @@ export default function AdminPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de Usuário</label>
-                <div className="flex gap-4">
+                <div className="flex gap-4 flex-wrap">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="radio"
                       name="role"
                       value="viewer"
                       checked={newUserForm.role === 'viewer'}
-                      onChange={(e) => setNewUserForm({ ...newUserForm, role: e.target.value as 'admin' | 'viewer' })}
+                      onChange={(e) => setNewUserForm({ ...newUserForm, role: e.target.value as 'admin' | 'viewer' | 'blocked' })}
                       className="w-4 h-4 text-blue-600 focus:ring-blue-500"
                     />
                     <span className="text-sm text-gray-700 dark:text-gray-300">Visualizador</span>
-                    <span className="text-xs text-gray-400 dark:text-gray-500">(apenas visualiza o catálogo)</span>
                   </label>
-                </div>
-                <div className="flex gap-4 mt-2">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="radio"
                       name="role"
                       value="admin"
                       checked={newUserForm.role === 'admin'}
-                      onChange={(e) => setNewUserForm({ ...newUserForm, role: e.target.value as 'admin' | 'viewer' })}
+                      onChange={(e) => setNewUserForm({ ...newUserForm, role: e.target.value as 'admin' | 'viewer' | 'blocked' })}
                       className="w-4 h-4 text-blue-600 focus:ring-blue-500"
                     />
                     <span className="text-sm text-gray-700 dark:text-gray-300">Administrador</span>
-                    <span className="text-xs text-gray-400 dark:text-gray-500">(acesso total ao painel admin)</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="role"
+                      value="blocked"
+                      checked={newUserForm.role === 'blocked'}
+                      onChange={(e) => setNewUserForm({ ...newUserForm, role: e.target.value as 'admin' | 'viewer' | 'blocked' })}
+                      className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">Bloqueado</span>
                   </label>
                 </div>
               </div>
@@ -724,6 +792,62 @@ export default function AdminPage() {
 
               <button type="submit" className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"><Plus className="h-4 w-4" /><span>Criar Usuário</span></button>
             </form>
+          </div>
+        )}
+
+        {/* Users List */}
+        {activeTab === 'users' && !usingLocalMode && (
+          <div className="p-6">
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Usuários cadastrados</h3>
+            {users.length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">Nenhum usuário carregado.</p>
+            ) : (
+              <div className="divide-y divide-gray-200 dark:divide-gray-700 rounded-lg border border-gray-200 dark:border-gray-700">
+                {users.map((u) => (
+                  <div key={u.id} className="flex items-center justify-between px-4 py-3 bg-white dark:bg-gray-800">
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">{u.full_name || u.email || 'Usuário'}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{u.email || 'Email desconhecido'}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">{u.role}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs px-2 py-1 rounded-full border ${
+                        u.role === 'blocked'
+                          ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-100 dark:border-red-800'
+                          : u.is_sales_active
+                            ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-100 dark:border-green-800'
+                            : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+                      }`}>
+                        {u.role === 'blocked' ? 'Bloqueado' : u.is_sales_active ? 'Participa das metas' : 'Fora das metas'}
+                      </span>
+                      <button
+                        onClick={() => openEditUser(u)}
+                        className="text-sm px-3 py-1.5 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => handleToggleBlockUser(u)}
+                        className={`text-sm px-3 py-1.5 rounded-lg border transition-colors ${
+                          u.role === 'blocked'
+                            ? 'border-green-200 dark:border-green-700 text-green-700 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/30'
+                            : 'border-amber-200 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/30'
+                        }`}
+                      >
+                        {u.role === 'blocked' ? 'Desbloquear' : 'Bloquear'}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteUser(u)}
+                        disabled={deletingUserId === u.id}
+                        className="text-sm px-3 py-1.5 border border-red-200 dark:border-red-700 rounded-lg text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors disabled:opacity-60"
+                      >
+                        {deletingUserId === u.id ? 'Excluindo...' : 'Excluir'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -999,6 +1123,103 @@ export default function AdminPage() {
                 <div className="flex gap-3 pt-4">
                   <button type="button" onClick={() => setIsGoalModalOpen(false)} className="flex-1 px-4 py-2 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">Cancelar</button>
                   <button type="submit" className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"><Save className="h-4 w-4" /><span>Salvar Metas</span></button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit User Modal */}
+      {editUserModal.open && editUserModal.user && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/50" onClick={() => setEditUserModal({ open: false, user: null })} />
+            <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Editar Usuário</h2>
+                <button onClick={() => setEditUserModal({ open: false, user: null })} className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveEditUser} className="space-y-4">
+                {editMessage.text && (
+                  <div className={`p-3 rounded-lg text-sm ${editMessage.type === 'error' ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400' : 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400'}`}>
+                    {editMessage.text}
+                  </div>
+                )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nome Completo</label>
+                  <input
+                    type="text"
+                    value={editForm.name}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    placeholder="Ex: Maria Silva"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de Usuário</label>
+                  <div className="flex gap-4 flex-wrap">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="editRole"
+                        value="viewer"
+                        checked={editForm.role === 'viewer'}
+                        onChange={(e) => setEditForm({ ...editForm, role: e.target.value as 'admin' | 'viewer' | 'blocked' })}
+                        className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">Visualizador</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="editRole"
+                        value="admin"
+                        checked={editForm.role === 'admin'}
+                        onChange={(e) => setEditForm({ ...editForm, role: e.target.value as 'admin' | 'viewer' | 'blocked' })}
+                        className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">Administrador</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="editRole"
+                        value="blocked"
+                        checked={editForm.role === 'blocked'}
+                        onChange={(e) => setEditForm({ ...editForm, role: e.target.value as 'admin' | 'viewer' | 'blocked' })}
+                        className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">Bloqueado</span>
+                    </label>
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <label className="flex items-center gap-3 p-3 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer">
+                    <div className="flex items-center h-5">
+                      <input
+                        type="checkbox"
+                        checked={editForm.isSalesActive}
+                        onChange={(e) => setEditForm({ ...editForm, isSalesActive: e.target.checked })}
+                        className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600"
+                      />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">Participa das Metas (Comercial)</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">Se marcado, aparecerá no dashboard de vendas</span>
+                    </div>
+                  </label>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button type="button" onClick={() => setEditUserModal({ open: false, user: null })} className="flex-1 px-4 py-2 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">Cancelar</button>
+                  <button type="submit" className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                    <Save className="h-4 w-4" />
+                    <span>Salvar</span>
+                  </button>
                 </div>
               </form>
             </div>

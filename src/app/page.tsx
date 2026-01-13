@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Package, Target, LogOut, Settings, Sun, Moon, User } from 'lucide-react'
+import { Package, Target, LogOut, Settings, Sun, Moon, User, FileSpreadsheet } from 'lucide-react'
 import { isAuthenticated, isAdmin, logout, getCurrentUser, isSalesActive } from '@/lib/auth'
 import { useTheme } from '@/lib/ThemeContext'
 import Image from 'next/image'
@@ -72,12 +72,19 @@ export default function HomePage() {
                 <span className="capitalize">{userName}</span>
               </div>
 
+              <Link
+                href="/configuracoes"
+                className="flex items-center gap-1 p-2 sm:p-0 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+              >
+                <Settings className="h-4 w-4" />
+                <span className="hidden sm:inline">Configurações</span>
+              </Link>
+
               {userIsAdmin && (
                 <Link
                   href="/admin"
                   className="flex items-center gap-1 p-2 sm:p-0 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
                 >
-                  <Settings className="h-4 w-4" />
                   <span className="hidden sm:inline">Admin</span>
                 </Link>
               )}
@@ -99,7 +106,7 @@ export default function HomePage() {
 
       {/* Main Content - Dashboard Cards */}
       <main className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8">
-        <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+        <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8">
           
           {/* Card Catálogo */}
           <Link 
@@ -132,6 +139,21 @@ export default function HomePage() {
                         </div>
                       </Link>
                     )}
+
+          {/* Card Vendas */}
+          <Link 
+            href="/vendas"
+            className="group relative overflow-hidden bg-white dark:bg-gray-800 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 border border-gray-100 dark:border-gray-700 flex flex-col items-center justify-center p-8 sm:p-12 text-center h-64 sm:h-80"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-50 to-transparent dark:from-purple-900/20 dark:to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <div className="relative z-10 flex flex-col items-center">
+              <div className="w-20 h-20 rounded-full bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center mb-6 text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform duration-300">
+                <FileSpreadsheet className="h-10 w-10" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Vendas &amp; Faturamento</h2>
+              <p className="text-gray-500 dark:text-gray-400">Lance pedidos, faturado e acompanhe o saldo a faturar.</p>
+            </div>
+          </Link>
         </div>
       </main>
 

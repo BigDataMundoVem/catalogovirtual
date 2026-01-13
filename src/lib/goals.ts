@@ -184,36 +184,11 @@ export interface LeaderboardEntry {
 
 // ... existing code ...
 
-// Fetch profile data for a single user
-export async function getUserProfileById(userId: string): Promise<UserProfile | null> {
-  if (!isSupabaseConfigured || !supabase) {
-    return {
-      id: userId,
-      full_name: 'Usuário Local',
-      email: 'local-user',
-      role: 'viewer',
-      avatar_url: null
-    }
-  }
-
-  const { data, error } = await (supabase as any)
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .single()
-
-  if (error) {
-    console.error('Error fetching user profile:', error)
-    return null
-  }
-
-  return data as UserProfile
-}
-
 export async function getLeaderboardData(month: number, year: number): Promise<LeaderboardEntry[]> {
   if (!isSupabaseConfigured || !supabase) return []
 
-  // 1. Fetch all profiles ativos em vendas
+  // 1. Fetch all profiles (or simulate if user_roles/auth is tricky to join directly without backend functions)
+  // Ideally, we query the 'profiles' table we just created.
   const { data: profiles, error: profileError } = await (supabase as any)
     .from('profiles')
     .select('*')
@@ -225,19 +200,14 @@ export async function getLeaderboardData(month: number, year: number): Promise<L
     return []
   }
 
-  // 2. Fetch user roles para filtrar bloqueados
-  const { data: rolesData } = await (supabase as any)
-    .from('user_roles')
-    .select('user_id, role')
-
-  // 3. Fetch all goals for the month
+  // 2. Fetch all goals for the month
   const { data: goals } = await (supabase as any)
     .from('monthly_goals')
     .select('*')
     .eq('month', month)
     .eq('year', year)
 
-  // 4. Fetch all logs for the month
+  // 3. Fetch all logs for the month
   const startDate = `${year}-${String(month).padStart(2, '0')}-01`
   const lastDay = new Date(year, month, 0).getDate()
   const endDate = `${year}-${String(month).padStart(2, '0')}-${lastDay}`
@@ -248,14 +218,8 @@ export async function getLeaderboardData(month: number, year: number): Promise<L
     .gte('entry_date', startDate)
     .lte('entry_date', endDate)
 
-  // 5. Aggregate data (ignorando bloqueados)
-  const leaderboard: LeaderboardEntry[] = profiles
-    .filter((profile: any) => {
-      const roleEntry = rolesData?.find((r: any) => r.user_id === profile.id)
-      // Se não tiver role ou estiver bloqueado, não exibe
-      return roleEntry && roleEntry.role !== 'blocked'
-    })
-    .map((profile: any) => {
+  // 4. Aggregate data
+  const leaderboard: LeaderboardEntry[] = profiles.map((profile: any) => {
     const userGoal = goals?.find((g: any) => g.user_id === profile.id) || null
     const userLogs = logs?.filter((l: any) => l.user_id === profile.id) || []
 
@@ -271,7 +235,7 @@ export async function getLeaderboardData(month: number, year: number): Promise<L
     return {
       user: {
         id: profile.id,
-        full_name: profile.full_name || 'Usuário',
+        full_name: profile.full_name || profile.email?.split('@')[0] || 'Usuário',
         email: profile.email,
         role: profile.role,
         avatar_url: profile.avatar_url

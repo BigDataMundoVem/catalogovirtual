@@ -6,14 +6,13 @@ const AUTH_KEY = 'catalogo_auth'
 const AUTH_ROLE_KEY = 'catalogo_auth_role'
 const CREDENTIALS_KEY = 'catalogo_credentials'
 const LOGIN_HISTORY_KEY = 'catalogo_login_history'
-const LAST_LOGIN_NAME_KEY = 'catalogo_last_username'
 
 const DEFAULT_ADMIN_USER = 'admin'
 const DEFAULT_ADMIN_PASS = 'admin123'
 const DEFAULT_VIEWER_USER = 'viewer'
 const DEFAULT_VIEWER_PASS = 'viewer123'
 
-export type UserRole = 'admin' | 'viewer' | 'blocked'
+export type UserRole = 'admin' | 'viewer'
 
 interface LocalCredentials {
   username: string
@@ -94,7 +93,6 @@ export async function login(emailOrUsername: string, password: string): Promise<
     if (user) {
       localStorage.setItem(AUTH_KEY, 'true')
       localStorage.setItem(AUTH_ROLE_KEY, user.role)
-      localStorage.setItem(LAST_LOGIN_NAME_KEY, emailOrUsername)
       recordLocalLogin(emailOrUsername)
       return { success: true, role: user.role }
     }
@@ -112,15 +110,8 @@ export async function login(emailOrUsername: string, password: string): Promise<
   }
 
   if (data.user) {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(LAST_LOGIN_NAME_KEY, emailOrUsername)
-    }
     await recordSupabaseLogin(data.user)
     const role = await getUserRole(data.user.id)
-    if (role === 'blocked') {
-      await supabase!.auth.signOut()
-      return { success: false, error: 'Usuário bloqueado, contate o administrador.' }
-    }
     return { success: true, role }
   }
 
@@ -132,11 +123,7 @@ export async function logout(): Promise<void> {
   if (!isSupabaseConfigured) {
     localStorage.removeItem(AUTH_KEY)
     localStorage.removeItem(AUTH_ROLE_KEY)
-    localStorage.removeItem(LAST_LOGIN_NAME_KEY)
     return
-  }
-  if (typeof window !== 'undefined') {
-    localStorage.removeItem(LAST_LOGIN_NAME_KEY)
   }
   await supabase!.auth.signOut()
 }
@@ -288,42 +275,59 @@ export async function getLoginHistory(limit: number = 50): Promise<LocalLoginHis
 }
 
 // Get all users (admin only)
-export async function getUsers(): Promise<{ id: string; email: string; role: string; full_name?: string | null; is_sales_active?: boolean | null }[]> {
+export async function getUsers(): Promise<{ id: string; email: string; role: 'admin' | 'viewer' | 'blocked'; full_name?: string | null; is_sales_active?: boolean | null }[]> {
   if (!isSupabaseConfigured) {
     // Local mode mock
     return [
-      { id: '1', email: DEFAULT_ADMIN_USER, role: 'admin' },
-      { id: '2', email: DEFAULT_VIEWER_USER, role: 'viewer' }
+      { id: '1', email: DEFAULT_ADMIN_USER, role: 'admin' as const, full_name: null, is_sales_active: true },
+      { id: '2', email: DEFAULT_VIEWER_USER, role: 'viewer' as const, full_name: null, is_sales_active: true }
     ]
   }
 
-  // Fetch roles
-  const { data: rolesData, error: rolesError } = await (supabase as any)
-    .from('user_roles')
-    .select('*')
+  // Fetch from profiles table which has all the data we need
+  const { data: profilesData, error: profilesError } = await (supabase as any)
+    .from('profiles')
+    .select('id, email, role, full_name, is_sales_active')
 
-  if (rolesError) {
-    console.error('Error fetching roles:', rolesError)
-    return []
+  if (profilesError) {
+    console.error('Error fetching profiles:', profilesError)
+    // Fallback to old method
+    const { data: rolesData, error: rolesError } = await (supabase as any)
+      .from('user_roles')
+      .select('*')
+
+    if (rolesError) {
+      console.error('Error fetching roles:', rolesError)
+      return []
+    }
+
+    const { data: historyData } = await (supabase as any)
+      .from('login_history')
+      .select('user_id, user_email')
+      .order('logged_in_at', { ascending: false })
+
+    const users = rolesData.map((role: any) => {
+      const history = historyData?.find((h: any) => h.user_id === role.user_id)
+      return {
+        id: role.user_id,
+        role: (role.role || 'viewer') as 'admin' | 'viewer' | 'blocked',
+        email: history?.user_email || 'Email desconhecido',
+        full_name: null,
+        is_sales_active: null
+      }
+    })
+
+    return users
   }
 
-  // Fetch profiles to get name/email/is_sales_active
-  const { data: profilesData } = await (supabase as any)
-    .from('profiles')
-    .select('*')
-
-  const users = rolesData.map((role: any) => {
-    const profile = profilesData?.find((p: any) => p.id === role.user_id)
-    return {
-      id: role.user_id,
-      role: role.role,
-      email: profile?.email || 'Email desconhecido',
-      full_name: profile?.full_name || null,
-      is_sales_active: profile?.is_sales_active
-    }
-  })
-
-  return users
+  // Map profiles to return format
+  return profilesData.map((profile: any) => ({
+    id: profile.id,
+    email: profile.email || 'Email desconhecido',
+    role: (profile.role || 'viewer') as 'admin' | 'viewer' | 'blocked',
+    full_name: profile.full_name || null,
+    is_sales_active: profile.is_sales_active ?? null
+  }))
 }
 
 // Auth state change listener
@@ -340,102 +344,4 @@ export function onAuthStateChange(callback: (session: Session | null) => void) {
 // Check if using local mode
 export function isLocalMode(): boolean {
   return !isSupabaseConfigured
-}
-
-// Update user role and profile (admin only)
-export async function updateUserProfile(userId: string, params: { role?: UserRole; fullName?: string; isSalesActive?: boolean }): Promise<{ success: boolean; error?: string }> {
-  if (!isSupabaseConfigured) {
-    return { success: false, error: 'Supabase não configurado para edição de usuário' }
-  }
-
-  try {
-    if (params.role) {
-      // Upsert role
-      const { error: roleError } = await (supabase as any)
-        .from('user_roles')
-        .upsert({ user_id: userId, role: params.role }, { onConflict: 'user_id' })
-      if (roleError) throw roleError
-    }
-
-    if (params.fullName !== undefined || params.isSalesActive !== undefined) {
-      const payload: any = {}
-      if (params.fullName !== undefined) payload.full_name = params.fullName
-      if (params.isSalesActive !== undefined) payload.is_sales_active = params.isSalesActive
-
-      const { error: profileError } = await (supabase as any)
-        .from('profiles')
-        .update(payload)
-        .eq('id', userId)
-      if (profileError) throw profileError
-    }
-
-    return { success: true }
-  } catch (error: any) {
-    console.error('Error updating user profile:', error)
-    return { success: false, error: error?.message || 'Erro ao atualizar usuário' }
-  }
-}
-
-// Delete user profile/role (nota: não remove o auth.user pois requer chave service role)
-export async function deleteUserProfile(userId: string): Promise<{ success: boolean; error?: string }> {
-  if (!isSupabaseConfigured) {
-    return { success: false, error: 'Supabase não configurado para exclusão de usuário' }
-  }
-
-  try {
-    // Remove dados de metas/performance para evitar aparecer em dashboards
-    await (supabase as any).from('performance_logs').delete().eq('user_id', userId)
-    await (supabase as any).from('monthly_goals').delete().eq('user_id', userId)
-
-    const { error: roleError } = await (supabase as any)
-      .from('user_roles')
-      .delete()
-      .eq('user_id', userId)
-    if (roleError) throw roleError
-
-    const { error: profileError } = await (supabase as any)
-      .from('profiles')
-      .delete()
-      .eq('id', userId)
-    if (profileError) throw profileError
-
-    return { success: true }
-  } catch (error: any) {
-    console.error('Error deleting user profile:', error)
-    return { success: false, error: error?.message || 'Erro ao excluir usuário' }
-  }
-}
-
-// Block or unblock user (admin only) - sets role to 'blocked' or 'viewer' and optional is_sales_active false
-export async function blockUser(userId: string, blocked: boolean): Promise<{ success: boolean; error?: string }> {
-  if (!isSupabaseConfigured) {
-    return { success: false, error: 'Supabase não configurado para bloquear usuário' }
-  }
-  try {
-    const newRole: UserRole = blocked ? 'blocked' : 'viewer'
-
-    const { error: roleError } = await (supabase as any)
-      .from('user_roles')
-      .upsert({ user_id: userId, role: newRole }, { onConflict: 'user_id' })
-    if (roleError) throw roleError
-
-    if (blocked) {
-      const { error: profileError } = await (supabase as any)
-        .from('profiles')
-        .update({ is_sales_active: false })
-        .eq('id', userId)
-      if (profileError) throw profileError
-    }
-
-    return { success: true }
-  } catch (error: any) {
-    console.error('Error blocking user:', error)
-    return { success: false, error: error?.message || 'Erro ao bloquear usuário' }
-  }
-}
-
-// Get last login name for UI display (local or supabase)
-export function getLastLoginName(): string | null {
-  if (typeof window === 'undefined') return null
-  return localStorage.getItem(LAST_LOGIN_NAME_KEY)
 }

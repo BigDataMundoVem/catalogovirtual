@@ -72,21 +72,13 @@ export default function HomePage() {
                 <span className="capitalize truncate max-w-[100px]">{userName}</span>
               </div>
 
-              <Link
-                href="/configuracoes"
-                className="flex items-center gap-1 p-1.5 sm:p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-                title="Configurações"
-              >
-                <Settings className="h-4 w-4" />
-                <span className="hidden lg:inline text-sm">Configurações</span>
-              </Link>
-
               {userIsAdmin && (
                 <Link
                   href="/admin"
                   className="flex items-center gap-1 p-1.5 sm:p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
                   title="Admin"
                 >
+                  <Settings className="h-4 w-4" />
                   <span className="hidden lg:inline text-sm">Admin</span>
                 </Link>
               )}

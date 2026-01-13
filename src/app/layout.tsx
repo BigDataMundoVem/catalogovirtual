@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { Providers } from '@/components/Providers'
+import { MobileNavigation } from '@/components/MobileNavigation'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -37,7 +38,10 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/Logo.png" />
       </head>
       <body className={`${inter.className} bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors`}>
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          <MobileNavigation />
+        </Providers>
       </body>
     </html>
   )

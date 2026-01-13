@@ -6,6 +6,7 @@ import { supabase, isSupabaseConfigured, uploadImage, deleteImage } from '@/lib/
 import { isAuthenticated, isAdmin, logout, getCurrentUser, updatePassword, createUser, getLoginHistory, isLocalMode, getUsers, updateUserProfile, deleteUserProfile, blockUser } from '@/lib/auth'
 import { getMonthlyGoal, setMonthlyGoal } from '@/lib/goals'
 import { useIsMobile } from '@/hooks/useResponsive'
+import { Tabs } from '@/components/Tabs'
 import {
   Plus, Pencil, Trash2, X, Package, ArrowLeft, Save,
   FolderOpen, Tag, LogOut, Settings, Upload, Users, History, AlertCircle, Sun, Moon, Target, Calendar
@@ -607,25 +608,54 @@ export default function AdminPage() {
       )}
 
       <main className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8">
-        <div className="flex gap-1.5 sm:gap-2 mb-4 sm:mb-6 overflow-x-auto pb-2 -mx-3 sm:mx-0 px-3 sm:px-0">
-          <button onClick={() => setActiveTab('products')} className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap flex-shrink-0 ${activeTab === 'products' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
-            <Package className="h-4 w-4 sm:h-5 sm:w-5" /><span>Produtos ({products.length})</span>
-          </button>
-          <button onClick={() => setActiveTab('categories')} className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap flex-shrink-0 ${activeTab === 'categories' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
-            <FolderOpen className="h-4 w-4 sm:h-5 sm:w-5" /><span>Famílias ({categories.length})</span>
-          </button>
-          <button onClick={() => { setActiveTab('users'); loadUsers(); }} className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap flex-shrink-0 ${activeTab === 'users' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
-            <Users className="h-4 w-4 sm:h-5 sm:w-5" /><span>Usuários</span>
-          </button>
-          <button onClick={() => { setActiveTab('goals'); loadUsers(); }} className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap flex-shrink-0 ${activeTab === 'goals' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
-            <Target className="h-4 w-4 sm:h-5 sm:w-5" /><span>Metas</span>
-          </button>
-          <button onClick={() => { setActiveTab('history'); loadLoginHistory() }} className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap flex-shrink-0 ${activeTab === 'history' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
-            <History className="h-4 w-4 sm:h-5 sm:w-5" /><span>Histórico</span>
-          </button>
-          <button onClick={() => setActiveTab('settings')} className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap flex-shrink-0 ${activeTab === 'settings' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
-            <Settings className="h-4 w-4 sm:h-5 sm:w-5" /><span>Configurações</span>
-          </button>
+        <div className="mb-4 sm:mb-6">
+          <Tabs
+            tabs={[
+              {
+                id: 'products',
+                label: 'Produtos',
+                icon: <Package className="h-4 w-4 sm:h-5 sm:w-5" />,
+                count: products.length,
+              },
+              {
+                id: 'categories',
+                label: 'Famílias',
+                icon: <FolderOpen className="h-4 w-4 sm:h-5 sm:w-5" />,
+                count: categories.length,
+              },
+              {
+                id: 'users',
+                label: 'Usuários',
+                icon: <Users className="h-4 w-4 sm:h-5 sm:w-5" />,
+              },
+              {
+                id: 'goals',
+                label: 'Metas',
+                icon: <Target className="h-4 w-4 sm:h-5 sm:w-5" />,
+              },
+              {
+                id: 'history',
+                label: 'Histórico',
+                icon: <History className="h-4 w-4 sm:h-5 sm:w-5" />,
+              },
+              {
+                id: 'settings',
+                label: 'Configurações',
+                icon: <Settings className="h-4 w-4 sm:h-5 sm:w-5" />,
+              },
+            ]}
+            activeTab={activeTab}
+            onChange={(tabId) => {
+              const newTab = tabId as 'products' | 'categories' | 'users' | 'history' | 'settings' | 'goals'
+              setActiveTab(newTab)
+              if (newTab === 'users' || newTab === 'goals') {
+                loadUsers()
+              }
+              if (newTab === 'history') {
+                loadLoginHistory()
+              }
+            }}
+          />
         </div>
 
         {/* Products Tab */}
@@ -1228,6 +1258,7 @@ export default function AdminPage() {
           </div>
         </div>
       )}
+
     </div>
   )
 }

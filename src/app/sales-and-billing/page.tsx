@@ -8,6 +8,7 @@ import { ChannelName, UserEntry, useSalesCalculations } from '@/components/sales
 import { TableHeaderGrouped, ChannelRow, ChannelFooter, ChannelRowMobile, ChannelFooterMobile } from '@/components/sales/ChannelComponents'
 import { useIsMobile } from '@/hooks/useResponsive'
 import { UserFormModal } from '@/components/sales/UserFormModal'
+import { Tabs } from '@/components/Tabs'
 import { isAuthenticated, isAdmin } from '@/lib/auth'
 import {
   loadSalesData,
@@ -363,20 +364,16 @@ export default function SalesAndBillingPage() {
         )}
 
         {/* Abas dos canais */}
-        <div className="flex gap-1.5 sm:gap-2 mb-3 sm:mb-4 overflow-x-auto pb-1 -mx-3 sm:mx-0 px-3 sm:px-0">
-          {CHANNELS.map((ch) => (
-            <button
-              key={ch.key}
-              onClick={() => setActiveTab(ch.key)}
-              className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-lg border transition-colors whitespace-nowrap flex-shrink-0 ${
-                activeTab === ch.key
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
-              }`}
-            >
-              {ch.label}
-            </button>
-          ))}
+        <div className="mb-3 sm:mb-4">
+          <Tabs
+            tabs={CHANNELS.map((ch) => ({
+              id: ch.key,
+              label: ch.label,
+              count: data[ch.key]?.length || 0,
+            }))}
+            activeTab={activeTab}
+            onChange={(tabId) => setActiveTab(tabId as ChannelKey)}
+          />
         </div>
 
         {/* Card da tabela */}
@@ -479,6 +476,7 @@ export default function SalesAndBillingPage() {
         initial={editUser.user}
         channel={channelLabel}
       />
+
     </div>
   )
 }

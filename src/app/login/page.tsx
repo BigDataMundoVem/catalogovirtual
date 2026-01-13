@@ -69,7 +69,7 @@ export default function LoginPage() {
             <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 mb-3 sm:mb-4">
               <Image src="/Logo.png" alt="Logo" width={80} height={80} className="object-contain" sizes="(max-width: 640px) 64px, 80px" />
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Catálogo</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Área Restrita</h1>
             <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400 mt-1">Faça login para acessar</p>
           </div>
 

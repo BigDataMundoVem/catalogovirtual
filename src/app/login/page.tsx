@@ -52,25 +52,25 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4 transition-colors">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-3 sm:p-4 transition-colors">
       {/* Theme toggle */}
       <button
         onClick={toggleTheme}
-        className="absolute top-4 right-4 p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+        className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
         title={theme === 'dark' ? 'Modo claro' : 'Modo escuro'}
       >
-        {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+        {theme === 'dark' ? <Sun className="h-4 w-4 sm:h-5 sm:w-5" /> : <Moon className="h-4 w-4 sm:h-5 sm:w-5" />}
       </button>
 
       <div className="w-full max-w-sm">
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-8 transition-colors">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 sm:p-8 transition-colors">
           {/* Header */}
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-20 h-20 mb-4">
-              <Image src="/Logo.png" alt="Logo" width={80} height={80} className="object-contain" />
+          <div className="text-center mb-6 sm:mb-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 mb-3 sm:mb-4">
+              <Image src="/Logo.png" alt="Logo" width={80} height={80} className="object-contain" sizes="(max-width: 640px) 64px, 80px" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Catálogo</h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-1">Faça login para acessar</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Catálogo</h1>
+            <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400 mt-1">Faça login para acessar</p>
           </div>
 
           {/* Error Message */}

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase, isSupabaseConfigured, uploadImage, deleteImage } from '@/lib/supabase'
 import { isAuthenticated, isAdmin, logout, getCurrentUser, updatePassword, createUser, getLoginHistory, isLocalMode, getUsers, updateUserProfile, deleteUserProfile, blockUser } from '@/lib/auth'
 import { getMonthlyGoal, setMonthlyGoal } from '@/lib/goals'
+import { useIsMobile } from '@/hooks/useResponsive'
 import {
   Plus, Pencil, Trash2, X, Package, ArrowLeft, Save,
   FolderOpen, Tag, LogOut, Settings, Upload, Users, History, AlertCircle, Sun, Moon, Target, Calendar
@@ -52,6 +53,7 @@ interface UserData {
 export default function AdminPage() {
   const router = useRouter()
   const { theme, toggleTheme } = useTheme()
+  const isMobile = useIsMobile()
   const [mounted, setMounted] = useState(false)
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
@@ -566,29 +568,29 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
       <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 transition-colors">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link href="/" className="flex items-center gap-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
-                <ArrowLeft className="h-5 w-5" /><span>Voltar</span>
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-3 sm:py-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+              <Link href="/" className="flex items-center gap-1 sm:gap-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 flex-shrink-0">
+                <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" /><span className="hidden sm:inline text-sm">Voltar</span>
               </Link>
-              <div className="h-6 w-px bg-gray-200 dark:bg-gray-700" />
-              <div className="flex items-center gap-2">
-                <Image src="/Logo.png" alt="Logo" width={32} height={32} className="object-contain" />
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white">Admin</h1>
+              <div className="h-5 sm:h-6 w-px bg-gray-200 dark:bg-gray-700 flex-shrink-0" />
+              <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                <Image src="/Logo.png" alt="Logo" width={24} height={24} className="object-contain flex-shrink-0 sm:w-8 sm:h-8" />
+                <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white truncate">Admin</h1>
               </div>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-4 flex-shrink-0">
               <button
                 onClick={toggleTheme}
-                className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                className="p-1.5 sm:p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                 title={theme === 'dark' ? 'Modo claro' : 'Modo escuro'}
               >
-                {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                {theme === 'dark' ? <Sun className="h-4 w-4 sm:h-5 sm:w-5" /> : <Moon className="h-4 w-4 sm:h-5 sm:w-5" />}
               </button>
-              <span className="text-sm text-gray-500 dark:text-gray-400 hidden sm:block">{userEmail}</span>
-              <button onClick={handleLogout} className="flex items-center gap-2 px-3 py-2 text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg">
-                <LogOut className="h-5 w-5" /><span className="hidden sm:inline">Sair</span>
+              <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 hidden lg:block truncate max-w-[150px]">{userEmail}</span>
+              <button onClick={handleLogout} className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg">
+                <LogOut className="h-4 w-4 sm:h-5 sm:w-5" /><span className="hidden sm:inline text-sm">Sair</span>
               </button>
             </div>
           </div>
@@ -604,71 +606,71 @@ export default function AdminPage() {
         </div>
       )}
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex gap-2 mb-6 flex-wrap">
-          <button onClick={() => setActiveTab('products')} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${activeTab === 'products' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
-            <Package className="h-5 w-5" /><span>Produtos ({products.length})</span>
+      <main className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8">
+        <div className="flex gap-1.5 sm:gap-2 mb-4 sm:mb-6 overflow-x-auto pb-2 -mx-3 sm:mx-0 px-3 sm:px-0">
+          <button onClick={() => setActiveTab('products')} className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap flex-shrink-0 ${activeTab === 'products' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+            <Package className="h-4 w-4 sm:h-5 sm:w-5" /><span>Produtos ({products.length})</span>
           </button>
-          <button onClick={() => setActiveTab('categories')} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${activeTab === 'categories' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
-            <FolderOpen className="h-5 w-5" /><span>Famílias ({categories.length})</span>
+          <button onClick={() => setActiveTab('categories')} className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap flex-shrink-0 ${activeTab === 'categories' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+            <FolderOpen className="h-4 w-4 sm:h-5 sm:w-5" /><span>Famílias ({categories.length})</span>
           </button>
-          <button onClick={() => { setActiveTab('users'); loadUsers(); }} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${activeTab === 'users' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
-            <Users className="h-5 w-5" /><span>Usuários</span>
+          <button onClick={() => { setActiveTab('users'); loadUsers(); }} className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap flex-shrink-0 ${activeTab === 'users' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+            <Users className="h-4 w-4 sm:h-5 sm:w-5" /><span>Usuários</span>
           </button>
-          <button onClick={() => { setActiveTab('goals'); loadUsers(); }} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${activeTab === 'goals' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
-            <Target className="h-5 w-5" /><span>Metas</span>
+          <button onClick={() => { setActiveTab('goals'); loadUsers(); }} className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap flex-shrink-0 ${activeTab === 'goals' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+            <Target className="h-4 w-4 sm:h-5 sm:w-5" /><span>Metas</span>
           </button>
-          <button onClick={() => { setActiveTab('history'); loadLoginHistory() }} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${activeTab === 'history' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
-            <History className="h-5 w-5" /><span>Histórico</span>
+          <button onClick={() => { setActiveTab('history'); loadLoginHistory() }} className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap flex-shrink-0 ${activeTab === 'history' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+            <History className="h-4 w-4 sm:h-5 sm:w-5" /><span>Histórico</span>
           </button>
-          <button onClick={() => setActiveTab('settings')} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${activeTab === 'settings' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
-            <Settings className="h-5 w-5" /><span>Configurações</span>
+          <button onClick={() => setActiveTab('settings')} className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap flex-shrink-0 ${activeTab === 'settings' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+            <Settings className="h-4 w-4 sm:h-5 sm:w-5" /><span>Configurações</span>
           </button>
         </div>
 
         {/* Products Tab */}
         {activeTab === 'products' && (
           <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden transition-colors">
-            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Produtos</h2>
-              <button onClick={openNewProductModal} disabled={categories.length === 0} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed">
-                <Plus className="h-5 w-5" /><span>Novo Produto</span>
+            <div className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">Produtos</h2>
+              <button onClick={openNewProductModal} disabled={categories.length === 0} className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed">
+                <Plus className="h-4 w-4 sm:h-5 sm:w-5" /><span>Novo Produto</span>
               </button>
             </div>
             {categories.length === 0 && (
-              <div className="px-6 py-4 bg-yellow-50 dark:bg-yellow-900/30 border-b border-yellow-100 dark:border-yellow-800">
-                <p className="text-yellow-800 dark:text-yellow-200 text-sm">Crie pelo menos uma família antes de adicionar produtos.</p>
+              <div className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 bg-yellow-50 dark:bg-yellow-900/30 border-b border-yellow-100 dark:border-yellow-800">
+                <p className="text-yellow-800 dark:text-yellow-200 text-xs sm:text-sm">Crie pelo menos uma família antes de adicionar produtos.</p>
               </div>
             )}
             {products.length > 0 ? (
               <div className="divide-y divide-gray-200 dark:divide-gray-700">
                 {products.map((product) => (
-                  <div key={product.id} className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                    <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 flex-shrink-0">
-                      <Image src={product.image} alt={product.name} fill className="object-cover" />
+                  <div key={product.id} className="flex items-start sm:items-center gap-3 sm:gap-4 px-3 sm:px-4 lg:px-6 py-3 sm:py-4 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                    <div className="relative w-12 h-12 sm:w-16 sm:h-16 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 flex-shrink-0">
+                      <Image src={product.image} alt={product.name} fill className="object-cover" sizes="(max-width: 640px) 48px, 64px" />
                       {getProductImageCount(product) > 1 && (
-                        <div className="absolute bottom-0 right-0 px-1.5 py-0.5 bg-black/70 text-white text-xs rounded-tl">
+                        <div className="absolute bottom-0 right-0 px-1.5 py-0.5 bg-black/70 text-white text-[10px] sm:text-xs rounded-tl">
                           {getProductImageCount(product)}
                         </div>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-gray-900 dark:text-white truncate">{product.name}</h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{product.description}</p>
-                      <span className="text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-full mt-1 inline-block">{getCategoryName(product.category_id)}</span>
+                      <h3 className="font-medium text-sm sm:text-base text-gray-900 dark:text-white truncate">{product.name}</h3>
+                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate mt-0.5">{product.description}</p>
+                      <span className="text-[10px] sm:text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-full mt-1.5 inline-block">{getCategoryName(product.category_id)}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => openEditProductModal(product)} className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg"><Pencil className="h-5 w-5" /></button>
-                      <button onClick={() => handleDeleteProduct(product.id)} className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg"><Trash2 className="h-5 w-5" /></button>
+                    <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                      <button onClick={() => openEditProductModal(product)} className="p-1.5 sm:p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg"><Pencil className="h-4 w-4 sm:h-5 sm:w-5" /></button>
+                      <button onClick={() => handleDeleteProduct(product.id)} className="p-1.5 sm:p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg"><Trash2 className="h-4 w-4 sm:h-5 sm:w-5" /></button>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="px-6 py-16 text-center">
-                <Package className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Nenhum produto</h3>
-                <p className="text-gray-500 dark:text-gray-400">{categories.length === 0 ? 'Crie uma família primeiro.' : 'Adicione seu primeiro produto.'}</p>
+              <div className="px-3 sm:px-6 py-12 sm:py-16 text-center">
+                <Package className="h-10 w-10 sm:h-12 sm:w-12 text-gray-300 dark:text-gray-600 mx-auto mb-3 sm:mb-4" />
+                <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-1.5 sm:mb-2">Nenhum produto</h3>
+                <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400">{categories.length === 0 ? 'Crie uma família primeiro.' : 'Adicione seu primeiro produto.'}</p>
               </div>
             )}
           </div>

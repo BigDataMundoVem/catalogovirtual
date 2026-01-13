@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { CalculatedUser, ChannelTotals } from './useSalesCalculations'
 import { ChevronDown, ChevronUp, Pencil, Trash2 } from 'lucide-react'
+import { useIsMobile } from '@/hooks/useResponsive'
 
 /* ==========================================================================
    UTILITÁRIOS DE FORMATAÇÃO
@@ -313,5 +314,173 @@ export const ChannelFooter: React.FC<FooterProps> = ({ totals }) => {
         <td style={{ width: COL_WIDTHS.acoes }} className="px-2 py-3" />
       </tr>
     </tfoot>
+  )
+}
+
+/* ==========================================================================
+   VERSÃO MOBILE: CARDS
+   ========================================================================== */
+
+export const ChannelRowMobile: React.FC<RowProps> = ({ user, index, onEdit, onDelete, userIsAdmin = false }) => {
+  const [expanded, setExpanded] = useState(false)
+  
+  const faltaColor = user.valorMetaRestante > 0 
+    ? 'text-red-600 dark:text-red-400' 
+    : 'text-emerald-600 dark:text-emerald-400'
+
+  return (
+    <div className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 p-4">
+      {/* Header do Card */}
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{index + 1}º</span>
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{user.nome}</h3>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <span>Cód: {user.codigo || '-'}</span>
+            <span>•</span>
+            <span>{user.setor}</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-1">
+          {userIsAdmin && (
+            <>
+              <button
+                onClick={() => onEdit(user)}
+                className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+                title="Editar"
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => onDelete(user.id)}
+                className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                title="Excluir"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </>
+          )}
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+          >
+            {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </button>
+        </div>
+      </div>
+
+      {/* Performance Principal */}
+      <div className="grid grid-cols-2 gap-3 mb-3">
+        <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-2">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Meta Mensal</p>
+          <p className="text-sm font-semibold text-slate-900 dark:text-white">{formatCurrency(user.metaMensal)}</p>
+        </div>
+        <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-2">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">% Realizado</p>
+          <div className="flex justify-start">
+            <PerformanceBadge value={user.percentRealizado} size="sm" />
+          </div>
+        </div>
+      </div>
+
+      {/* Valores Principais */}
+      <div className="space-y-2 mb-3">
+        <div className="flex justify-between items-center">
+          <span className="text-xs text-slate-600 dark:text-slate-400">Valor Realizado</span>
+          <span className="text-sm font-medium text-slate-900 dark:text-white">{formatCurrency(user.valorRealizado)}</span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-xs text-slate-600 dark:text-slate-400">Faturado + Abertos</span>
+          <span className="text-sm font-semibold text-slate-900 dark:text-white">{formatCurrency(user.faturadosMaisAbertos)}</span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-xs text-slate-600 dark:text-slate-400">% Total Pedidos</span>
+          <PerformanceBadge value={user.percentTotalPedidos} size="sm" />
+        </div>
+      </div>
+
+      {/* Falta para Meta */}
+      <div className={`border-t border-slate-200 dark:border-slate-700 pt-3 ${expanded ? '' : 'hidden'}`}>
+        <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">Falta para Meta</p>
+        <div className="grid grid-cols-3 gap-2">
+          <div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Falta</p>
+            <p className={`text-sm font-semibold ${faltaColor}`}>{formatCurrency(user.valorMetaRestante)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">/Dia</p>
+            <p className={`text-sm font-medium ${faltaColor}`}>{formatCurrency(user.valorDia)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">/Semana</p>
+            <p className={`text-sm font-medium ${faltaColor}`}>{formatCurrency(user.valorSemana)}</p>
+          </div>
+        </div>
+        <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Pedidos em Aberto</p>
+          <p className="text-sm font-medium text-slate-900 dark:text-white">{formatCurrency(user.pedidosEmAberto)}</p>
+        </div>
+      </div>
+
+      {/* Botão para expandir/recolher */}
+      {!expanded && (
+        <button
+          onClick={() => setExpanded(true)}
+          className="w-full mt-2 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+        >
+          Ver mais detalhes
+        </button>
+      )}
+    </div>
+  )
+}
+
+export const ChannelFooterMobile: React.FC<FooterProps> = ({ totals }) => {
+  const faltaColor = totals.valorMetaRestanteTotal > 0 
+    ? 'text-red-600 dark:text-red-400' 
+    : 'text-emerald-600 dark:text-emerald-400'
+
+  return (
+    <div className="bg-slate-200 dark:bg-slate-700 p-4 border-t-2 border-slate-300 dark:border-slate-600">
+      <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-3">TOTAL</h3>
+      <div className="grid grid-cols-2 gap-3 mb-3">
+        <div>
+          <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Meta Total</p>
+          <p className="text-sm font-semibold text-slate-900 dark:text-white">{formatCurrency(totals.metaTotal)}</p>
+        </div>
+        <div>
+          <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">% Total</p>
+          <PerformanceBadge value={totals.percentTotal} size="sm" />
+        </div>
+      </div>
+      <div className="space-y-2">
+        <div className="flex justify-between">
+          <span className="text-xs text-slate-600 dark:text-slate-400">Valor Realizado</span>
+          <span className="text-sm font-semibold text-slate-900 dark:text-white">{formatCurrency(totals.valorRealizadoTotal)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-xs text-slate-600 dark:text-slate-400">Falta p/ Meta</span>
+          <span className={`text-sm font-semibold ${faltaColor}`}>{formatCurrency(totals.valorMetaRestanteTotal)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-xs text-slate-600 dark:text-slate-400">/Dia</span>
+          <span className={`text-sm font-medium ${faltaColor}`}>{formatCurrency(totals.valorDiaTotal)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-xs text-slate-600 dark:text-slate-400">/Semana</span>
+          <span className={`text-sm font-medium ${faltaColor}`}>{formatCurrency(totals.valorSemanaTotal)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-xs text-slate-600 dark:text-slate-400">Pedidos em Aberto</span>
+          <span className="text-sm font-medium text-slate-900 dark:text-white">{formatCurrency(totals.pedidosEmAbertoTotal)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-xs text-slate-600 dark:text-slate-400">Faturado + Abertos</span>
+          <span className="text-sm font-semibold text-slate-900 dark:text-white">{formatCurrency(totals.faturadosMaisAbertosTotal)}</span>
+        </div>
+      </div>
+    </div>
   )
 }

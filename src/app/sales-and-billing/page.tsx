@@ -5,7 +5,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Plus, Calendar, ChevronLeft, ChevronRight, Loader2, Shield } from 'lucide-react'
 import { ChannelName, UserEntry, useSalesCalculations } from '@/components/sales/useSalesCalculations'
-import { TableHeaderGrouped, ChannelRow, ChannelFooter } from '@/components/sales/ChannelComponents'
+import { TableHeaderGrouped, ChannelRow, ChannelFooter, ChannelRowMobile, ChannelFooterMobile } from '@/components/sales/ChannelComponents'
+import { useIsMobile } from '@/hooks/useResponsive'
 import { UserFormModal } from '@/components/sales/UserFormModal'
 import { isAuthenticated, isAdmin } from '@/lib/auth'
 import {
@@ -55,6 +56,7 @@ const DEMO_DATA: ChannelState = {
 
 export default function SalesAndBillingPage() {
   const router = useRouter()
+  const isMobile = useIsMobile()
   
   // Estado do mês/ano selecionado
   const [selectedYear, setSelectedYear] = useState<number>(() => getCurrentYearMonth().ano)
@@ -260,20 +262,37 @@ export default function SalesAndBillingPage() {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white">
       {/* Header fixo */}
       <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-20">
-        <div className="w-full px-4 lg:px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link href="/" className="p-2 -ml-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
-              <ArrowLeft className="h-5 w-5 text-slate-500 dark:text-slate-400" />
-            </Link>
-            <div>
-              <h1 className="text-lg font-bold">Vendas &amp; Faturamento</h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Dashboard executivo de acompanhamento</p>
+        <div className="w-full px-3 sm:px-4 lg:px-6 py-3">
+          {/* Linha 1: Título e botão voltar */}
+          <div className="flex items-center justify-between mb-3 sm:mb-0">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Link href="/" className="p-1.5 sm:p-2 -ml-1 sm:-ml-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
+                <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5 text-slate-500 dark:text-slate-400" />
+              </Link>
+              <div>
+                <h1 className="text-base sm:text-lg font-bold">Vendas &amp; Faturamento</h1>
+                <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 hidden sm:block">Dashboard executivo de acompanhamento</p>
+              </div>
             </div>
+            {userIsAdmin && !isMobile && (
+              <button
+                onClick={() => {
+                  setEditUser({ channel: activeTab, user: null })
+                  setModalOpen(true)
+                }}
+                disabled={saving}
+                className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-blue-600 text-white text-xs sm:text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              >
+                <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Novo usuário</span>
+                <span className="sm:hidden">Novo</span>
+              </button>
+            )}
           </div>
 
-          {/* Seletor de mês/ano */}
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-700 rounded-lg p-1">
+          {/* Linha 2: Seletor de mês/ano e botão novo (mobile) */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2">
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-700 rounded-lg p-1 flex-1 sm:flex-initial">
               <button
                 onClick={goToPreviousMonth}
                 className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-600 rounded transition-colors"
@@ -281,9 +300,9 @@ export default function SalesAndBillingPage() {
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
-              <div className="flex items-center gap-2 px-3 py-1">
-                <Calendar className="h-4 w-4 text-slate-500" />
-                <span className="text-sm font-medium min-w-[140px] text-center">
+              <div className="flex items-center gap-2 px-2 sm:px-3 py-1 flex-1 justify-center">
+                <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-500" />
+                <span className="text-xs sm:text-sm font-medium text-center">
                   {formatMonthYear(selectedYear, selectedMonth)}
                 </span>
               </div>
@@ -299,20 +318,20 @@ export default function SalesAndBillingPage() {
             {!isCurrentMonth && (
               <button
                 onClick={goToCurrentMonth}
-                className="px-3 py-2 text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+                className="px-3 py-2 text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors whitespace-nowrap"
               >
                 Mês atual
               </button>
             )}
 
-            {userIsAdmin && (
+            {userIsAdmin && isMobile && (
               <button
                 onClick={() => {
                   setEditUser({ channel: activeTab, user: null })
                   setModalOpen(true)
                 }}
                 disabled={saving}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
               >
                 <Plus className="h-4 w-4" />
                 Novo usuário
@@ -323,12 +342,12 @@ export default function SalesAndBillingPage() {
       </header>
 
       {/* Conteúdo principal */}
-      <main className="w-full px-4 lg:px-6 py-4">
+      <main className="w-full px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
         {/* Aviso para não-admins */}
         {!userIsAdmin && (
-          <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center gap-2">
-            <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            <p className="text-sm text-blue-700 dark:text-blue-300">
+          <div className="mb-3 sm:mb-4 p-2 sm:p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-start gap-2">
+            <Shield className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+            <p className="text-xs sm:text-sm text-blue-700 dark:text-blue-300">
               <strong>Modo visualização:</strong> Apenas administradores podem editar os dados de vendas e faturamento.
             </p>
           </div>
@@ -336,20 +355,20 @@ export default function SalesAndBillingPage() {
 
         {/* Indicador de mês histórico */}
         {!isCurrentMonth && (
-          <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-            <p className="text-sm text-amber-700 dark:text-amber-300">
+          <div className="mb-3 sm:mb-4 p-2 sm:p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+            <p className="text-xs sm:text-sm text-amber-700 dark:text-amber-300">
               <strong>Visualizando dados históricos:</strong> {formatMonthYear(selectedYear, selectedMonth)}
             </p>
           </div>
         )}
 
         {/* Abas dos canais */}
-        <div className="flex gap-2 mb-4">
+        <div className="flex gap-1.5 sm:gap-2 mb-3 sm:mb-4 overflow-x-auto pb-1 -mx-3 sm:mx-0 px-3 sm:px-0">
           {CHANNELS.map((ch) => (
             <button
               key={ch.key}
               onClick={() => setActiveTab(ch.key)}
-              className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
+              className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-lg border transition-colors whitespace-nowrap flex-shrink-0 ${
                 activeTab === ch.key
                   ? 'bg-blue-600 text-white border-blue-600'
                   : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
@@ -361,23 +380,23 @@ export default function SalesAndBillingPage() {
         </div>
 
         {/* Card da tabela */}
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+        <div className="bg-white dark:bg-slate-800 rounded-lg sm:rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
           {/* Cabeçalho do card */}
-          <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-semibold text-slate-900 dark:text-white">{channelLabel}</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Ranking por % realizado da meta • {formatMonthYear(selectedYear, selectedMonth)}
+          <div className="px-3 sm:px-4 py-2 sm:py-3 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <h2 className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white truncate">{channelLabel}</h2>
+              <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">
+                Ranking por % realizado • {formatMonthYear(selectedYear, selectedMonth)}
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               {saving && (
-                <div className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Salvando...
+                <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-blue-600 dark:text-blue-400">
+                  <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" />
+                  <span className="hidden sm:inline">Salvando...</span>
                 </div>
               )}
-              <div className="text-xs text-slate-400 dark:text-slate-500">
+              <div className="text-xs text-slate-400 dark:text-slate-500 whitespace-nowrap">
                 {ranked.length} usuário{ranked.length !== 1 ? 's' : ''}
               </div>
             </div>
@@ -403,26 +422,47 @@ export default function SalesAndBillingPage() {
                   Adicionar primeiro usuário
                 </button>
               </div>
+            ) : isMobile ? (
+              // Versão Mobile: Cards
+              <div className="divide-y divide-slate-200 dark:divide-slate-700">
+                {ranked.map((u, idx) => (
+                  <ChannelRowMobile
+                    key={u.id}
+                    user={u}
+                    index={idx}
+                    onEdit={(user) => {
+                      setEditUser({ channel: activeTab, user })
+                      setModalOpen(true)
+                    }}
+                    onDelete={handleDeleteUser}
+                    userIsAdmin={userIsAdmin}
+                  />
+                ))}
+                <ChannelFooterMobile totals={totals} />
+              </div>
             ) : (
-              <table className="w-full" style={{ tableLayout: 'fixed' }}>
-                <TableHeaderGrouped />
-                <tbody>
-                  {ranked.map((u, idx) => (
-                    <ChannelRow
-                      key={u.id}
-                      user={u}
-                      index={idx}
-                      onEdit={(user) => {
-                        setEditUser({ channel: activeTab, user })
-                        setModalOpen(true)
-                      }}
-                      onDelete={handleDeleteUser}
-                      userIsAdmin={userIsAdmin}
-                    />
-                  ))}
-                </tbody>
-                <ChannelFooter totals={totals} />
-              </table>
+              // Versão Desktop: Tabela
+              <div className="overflow-x-auto">
+                <table className="w-full" style={{ tableLayout: 'fixed' }}>
+                  <TableHeaderGrouped />
+                  <tbody>
+                    {ranked.map((u, idx) => (
+                      <ChannelRow
+                        key={u.id}
+                        user={u}
+                        index={idx}
+                        onEdit={(user) => {
+                          setEditUser({ channel: activeTab, user })
+                          setModalOpen(true)
+                        }}
+                        onDelete={handleDeleteUser}
+                        userIsAdmin={userIsAdmin}
+                      />
+                    ))}
+                  </tbody>
+                  <ChannelFooter totals={totals} />
+                </table>
+              </div>
             )}
           </div>
         </div>
